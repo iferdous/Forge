@@ -87,6 +87,14 @@ jobs:
           python bench/suite.py --profile ci-smoke --out "$out" --native "$native" --objdump "$objdump"
           python bench/suite_report.py "$out"
 
+      - name: Capture showcase executions and isolated process memory
+        if: runner.os == 'Linux'
+        run: |
+          llvm_dir=$(cat .local/llvm-dir-linux-x64.txt)
+          PYTHONPATH="$PWD/.local/build/release/python" PYTHONDONTWRITEBYTECODE=1 \
+            python showcase/capture.py --require-avx2 --objdump "$llvm_dir/../../../bin/llvm-objdump" \
+            --out .local/evidence/stage-08/showcase-captures.json
+
       - name: Record the 30-second native AVX2 demo
         if: runner.os == 'Linux'
         run: |
