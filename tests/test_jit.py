@@ -165,7 +165,7 @@ class FusionJitTests(unittest.TestCase):
             capture_output=True, check=True, text=True,
         )
         for fragment in ("loops=3 temporary_arrays=2", "loops=1 temporary_arrays=0",
-                         "[3.0, 6.0, 9.0, 12.0]", "Both plans match NumPy", "vsqrtps"):
+                         "[3.0, 6.0, 9.0, 12.0]", "Both plans match the NumPy-based reference", "vsqrtps"):
             self.assertIn(fragment, demo.stdout)
 
         prompt = subprocess.run(
@@ -173,7 +173,7 @@ class FusionJitTests(unittest.TestCase):
             capture_output=True, check=True, text=True,
         )
         self.assertIn("Expected an input, literal", prompt.stdout)
-        self.assertIn("Both plans match NumPy", prompt.stdout)
+        self.assertIn("Both plans match the NumPy-based reference", prompt.stdout)
 
     def test_cross_emission_has_one_store_per_vector_or_scalar_iteration(self):
         x = np.ones(9, dtype=np.float32)

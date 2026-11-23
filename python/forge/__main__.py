@@ -42,7 +42,7 @@ def show(expression, arrays, inspect):
     if not hasattr(_forge_ir, "CompiledKernel"):
         for label, fusion in (("Unfused", False), ("Fused", True)):
             print(f"{label} plan\n{program.plan(*inputs, fusion=fusion).dump()}", end="")
-        print(f"NumPy reference result: {reference.tolist()}")
+        print(f"NumPy-based reference result: {reference.tolist()}")
         print("Build with FORGE_ENABLE_JIT=ON to run Forge's generated kernel.")
         return True
 
@@ -53,8 +53,8 @@ def show(expression, arrays, inspect):
     result = fused(*inputs)
     both_match = matches_reference(result, reference) and matches_reference(unfused(*inputs), reference)
     print(f"Forge result ({target}): {result.tolist()}")
-    print("Both plans match NumPy (same float32 bits outside NaNs)." if both_match
-          else "At least one Forge result differs from the NumPy reference.")
+    print("Both plans match the NumPy-based reference (same float32 bits outside NaNs)." if both_match
+          else "At least one Forge result differs from the NumPy-based reference.")
 
     if inspect == "ir":
         print(f"Fused LLVM IR ({fused.info.triple})\n{fused.info.ir}", end="")
