@@ -43,7 +43,17 @@ jobs:
         run: |
           $llvmDir = Get-Content .local/llvm-dir-${{ matrix.platform }}.txt
           $generator = @()
-          if ($IsWindows) { $generator = @('-A', 'x64') }
+          if ($IsWindows) {
+            $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+            $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if (!$vs) { throw 'Visual Studio with the x64 C++ toolchain was not found' }
+            $generator = @(
+              '-A', 'x64',
+              "-DMSVC_DIA_SDK_DIR=$vs/DIA SDK",
+              "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake",
+              '-DVCPKG_TARGET_TRIPLET=x64-windows-static'
+            )
+          }
           cmake --preset release "-DLLVM_DIR=$llvmDir" @generator
 
       - name: Build

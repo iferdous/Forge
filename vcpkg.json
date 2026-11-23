@@ -1,0 +1,10 @@
+{
+  "name": "forge-toolchain",
+  "version-string": "0.1.0",
+  "builtin-baseline": "9eec002df1cd109f8f104cd966a763daf9751489",
+  "dependencies": [
+    { "name": "libxml2", "default-features": false, "platform": "windows" },
+    { "name": "zlib", "platform": "windows" },
+    { "name": "zstd", "platform": "windows" }
+  ]
+}
