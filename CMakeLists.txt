@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.25)
 
 project(Forge LANGUAGES CXX)
 
+if(WIN32)
+    # LLVM's finder expects zstd_static.lib. The vcpkg config exports the same
+    # static CMake target from zstd.lib, so load it before the LLVM SDK.
+    find_package(zstd CONFIG QUIET)
+endif()
+
 find_package(LLVM 23.1.6 EXACT REQUIRED CONFIG)
 message(STATUS "Forge LLVM SDK: ${LLVM_PACKAGE_VERSION} (${LLVM_DIR})")
 message(STATUS "LLVM host triple: ${LLVM_HOST_TRIPLE}")
