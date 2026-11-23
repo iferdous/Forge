@@ -24,6 +24,5 @@ for (const [index, beat] of window.forgeBeats.entries()) {
   }
   const bars = document.querySelectorAll(beat.id + " .memory-track i");
   if (bars.length) timeline.from(bars, {scaleX: 0, transformOrigin: "left", duration: 1.25, stagger: .18}, t + .87);
-  timeline.from(beat.id + " .frame-bottom", {opacity: 0, duration: .36, ease: "sine.inOut"}, t + .61);
 }
 window.__timelines.forge = timeline;

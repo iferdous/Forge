@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from statistics import median
 import subprocess
-import sys
+from textwrap import wrap
 
 
 def esc(value):
@@ -69,8 +69,8 @@ def performances(trace, data):
         raise ValueError("The films require captured packed and scalar instructions")
     return {
         "fusion": [
-            ("Nine values go in", "Real native AVX2 execution",
-             panel("Terminal", ["$ python -m forge 'sqrt((x + 2) * 3)'",
+            ("Same math, two loop plans", "Can Forge do the work in one pass?",
+             panel("Captured AVX2 run", ["sqrt((x + 2) * 3)",
                                "x = [1, 10, 25, 46, 1, 10, 25, 46, 1]",
                                "→ [3, 6, 9, 12, 3, 6, 9, 12, 3]",
                                "Both plans passed the float32 bit check"])),
@@ -88,7 +88,7 @@ def performances(trace, data):
                     "Preallocated · shared Ubuntu CI"])),
         ],
         "lanes": [
-            ("Fill one vector", "8 elements · 1 packed iteration",
+            ("How one CPU instruction does eight jobs", "8 float32 values fill one AVX2 vector",
              lanes(8) + panel("Disassembled LLJIT packed body", packs)),
             ("Now add one value", "9 elements · 1 packed iteration + 1 scalar",
              lanes(9) + panel("Scalar cleanup", scalars + ["Output tail → 3.0", "Exact float32 reference check passed"])),
@@ -99,7 +99,7 @@ def performances(trace, data):
                "The tail uses scalar arithmetic"])),
         ],
         "tradeoffs": [
-            ("Addition has an order", "The accumulator remains float32",
+            ("Speed is only half the job", "Keep predictable answers when the workload changes",
              panel("Captured sum", ["sum([16777216, 1, -16777216, 4])", f"Forge → {cases['reduction']['output']:.1f}",
                                     "Adding 1 after 2²⁴ rounds away"])),
             ("Cross the tile edges", "17 × 33 × 35 crosses all three 16 × 32 × 32 tile bounds",
@@ -107,9 +107,10 @@ def performances(trace, data):
                                                f"First row → {cases['matmul-edge']['output'][0][:5]} …",
                                                "The full matrix passed the reference check"])),
             ("The workload decides", "Warm allocating Python · Ubuntu shared CI",
-             panel("NumPy median / Forge median", [f"Pointwise chain · 1,024 floats   {py[1]/py[0]:.2f}×",
-                                                     f"512-square matrix multiply       {mat[1]/mat[0]:.2f}×",
-                                                     "Above 1× favors Forge"])),
+             panel("1,024-element chain", [f"Forge {py[0]/1e3:.3f} µs · NumPy {py[1]/1e3:.3f} µs",
+                                           f"Forge is {py[1]/py[0]:.2f}× faster"]) +
+             panel("512 × 512 matrix multiply", [f"Forge {mat[0]/1e6:.2f} ms · NumPy {mat[1]/1e6:.2f} ms",
+                                                 f"NumPy is {mat[0]/mat[1]:.2f}× faster"])),
             ("Reuse the machine code", "The cache key includes the array shape",
              panel("Recorded cache requests", [f"Length 4 → miss {cache[1]['misses']}",
                                                f"Length 4 → hit {cache[2]['hits']}",
@@ -127,15 +128,22 @@ def call(*args):
     subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
-def voice_audio(directory, index, text, voice):
+def voice_audio(directory, index, source):
     audio = directory / f"voice-{index}.wav"
-    aiff = audio.with_suffix(".aiff")
-    call("say", "-v", voice, "-r", "184", "-o", str(aiff), text)
-    call("ffmpeg", "-v", "error", "-y", "-i", str(aiff), "-ac", "1", "-ar", "48000", str(audio))
-    aiff.unlink()
+    call("ffmpeg", "-v", "error", "-y", "-i", str(source), "-af",
+         "loudnorm=I=-17:TP=-2:LRA=8", "-ac", "1", "-ar", "48000", str(audio))
     probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
                             "-of", "csv=p=0", str(audio)], capture_output=True, text=True, check=True)
     return audio.name, float(probe.stdout.strip())
+
+
+def add_captions(vtt, text, start, duration):
+    phrases = wrap(text, width=55, break_long_words=False, break_on_hyphens=False)
+    total = sum(len(phrase.split()) for phrase in phrases)
+    for phrase in phrases:
+        end = start + duration * len(phrase.split()) / total
+        vtt.extend([f"{timestamp(start)} --> {timestamp(end)}", phrase, ""])
+        start = end
 
 
 def timestamp(seconds):
@@ -143,27 +151,29 @@ def timestamp(seconds):
     return f"{millis // 3_600_000:02}:{millis // 60_000 % 60:02}:{millis // 1000 % 60:02}.{millis % 1000:03}"
 
 
-def build(directory, key, beats, scripts, voice, commit):
+def build(directory, key, beats, scripts, narration_dir, commit):
     directory.mkdir(parents=True, exist_ok=True)
     clips, audios, cues, vtt = [], [], [], ["WEBVTT", ""]
     start = 0.0
     for index, ((title, kicker, card), narration) in enumerate(zip(beats, scripts, strict=True)):
-        audio, spoken = voice_audio(directory, index, narration, voice) if voice else (None, 5.7)
-        duration = max(5.6, spoken + .8)
+        source = narration_dir / f"{key}-{index}.mp3" if narration_dir else None
+        has_narration = source is not None and source.is_file()
+        audio, spoken = voice_audio(directory, index, source) if has_narration else (None, 6.5)
+        duration = max(5.6, spoken + .7)
         overlap = .45 if index + 1 < len(beats) else 0
         clips.append(f"""<section id="beat-{index}" class="clip beat"
             data-start="{start:.4f}" data-duration="{duration + overlap:.4f}"
             data-track-index="{1 + index % 2}" style="z-index:{index}">
             <div class="scene-content"><div class="frame-top"><span>FORGE / CPU TENSOR COMPILER</span>
-            <span>{esc(key.upper())}  ·  {index + 1} / {len(beats)}</span></div>
+            <span>{esc(commit)}</span></div>
             <div class="headline"><h1>{esc(title)}</h1><p>{esc(kicker)}</p></div>
-            <div class="cards">{card}</div>
-            <div class="frame-bottom">Actual Forge evidence · {esc(commit)}</div></div></section>""")
+            <div class="cards">{card}</div></div></section>""")
         cues.append({"id": f"#beat-{index}", "start": round(start, 4), "duration": round(duration, 4)})
         if audio:
             audios.append(f'<audio id="voice-{index}" class="clip" data-start="{start + .20:.4f}" '
                           f'data-duration="{spoken:.4f}" data-track-index="4" data-volume="1" src="{audio}"></audio>')
-        vtt.extend([f"{timestamp(start + .20)} --> {timestamp(start + .20 + spoken)}", narration, ""])
+        if audio or narration_dir is None:
+            add_captions(vtt, narration, start + .20, spoken)
         start += duration
     src = Path(__file__).parent
     for name in ("film.css", "film.js"):
@@ -184,10 +194,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--work", type=Path, required=True)
-    parser.add_argument("--voice", choices=("Daniel", "Samantha", "silent"), default="Daniel")
+    parser.add_argument("--narration", type=Path, default=Path(__file__).with_name("narration"))
+    parser.add_argument("--silent", action="store_true", help="Render without voice files, with the complete script as captions")
     options = parser.parse_args()
-    if options.voice != "silent" and sys.platform != "darwin":
-        parser.error("Use --voice silent outside macOS or supply narration using an equivalent local TTS setup")
     trace = json.loads((options.data / "captures.json").read_text(encoding="utf-8"))
     evidence = json.loads((options.data / "benchmarks.json").read_text(encoding="utf-8"))
     if trace["execution_target"] != "avx2" or not trace["rss_samples"]:
@@ -196,7 +205,7 @@ def main():
     for (key, beats), narration in zip(performances(trace, evidence).items(), scripts, strict=True):
         origins = f"trace {trace['commit'][:7]}  ·  timing {evidence['commit'][:7]}"
         build(options.work / key, key, beats, narration,
-              None if options.voice == "silent" else options.voice, origins)
+              None if options.silent else options.narration, origins)
 
 
 if __name__ == "__main__":

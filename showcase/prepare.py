@@ -185,13 +185,13 @@ def charts(data, folder, captures):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence", required=True, type=Path)
-    parser.add_argument("--site", required=True, type=Path)
+    parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--captures", type=Path)
     options = parser.parse_args()
     data = read_evidence(options.evidence)
-    folder = options.site / "data"
+    folder = options.out / "data"
     folder.mkdir(parents=True, exist_ok=True)
-    assets = options.site / "assets"
+    assets = options.out / "assets"
     assets.mkdir(parents=True, exist_ok=True)
     for host in data["hosts"]:
         (folder / f'{host["id"]}.csv').write_text(host.pop("csv"), encoding="utf-8", newline="\n")

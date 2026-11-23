@@ -1,0 +1,13 @@
+WEBVTT
+
+00:00:07.400 --> 00:00:10.839
+Now add one more input. The first eight still go
+
+00:00:10.839 --> 00:00:14.279
+through the vector loop. Watch the last box: the ninth
+
+00:00:14.279 --> 00:00:17.030
+value goes through the one-at-a-time cleanup path, and
+
+00:00:17.030 --> 00:00:18.406
+its answer is three.
