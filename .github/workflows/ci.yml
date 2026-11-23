@@ -62,10 +62,42 @@ jobs:
             )
           }
           $python = (Get-Command python).Source
-          cmake --preset release "-DLLVM_DIR=$llvmDir" "-DPython_EXECUTABLE=$python" @generator
+          cmake --preset release "-DLLVM_DIR=$llvmDir" "-DPython_EXECUTABLE=$python" -DFORGE_BUILD_BENCHMARKS=ON @generator
 
       - name: Build
         run: cmake --build --preset release --parallel 4
 
       - name: Run the graph, Python reference, and JIT tests
         run: ctest --preset release --verbose
+
+      - name: Inspect native objects and record warm baseline samples
+        shell: pwsh
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          $llvmDir = Get-Content .local/llvm-dir-${{ matrix.platform }}.txt
+          $sdk = Join-Path $llvmDir '../../..'
+          $suffix = if ($IsWindows) { '.exe' } else { '' }
+          $objdump = (Resolve-Path (Join-Path $sdk "bin/llvm-objdump$suffix")).Path
+          $benchmark = (Resolve-Path ".local/build/release/bench/forge_native_bench$suffix").Path
+          $env:PYTHONPATH = (Resolve-Path .local/build/release/python).Path
+          $out = '.local/evidence/stage-04'
+          New-Item -ItemType Directory -Force $out | Out-Null
+          $cpu = if ($IsWindows) {
+            (Get-CimInstance Win32_Processor | Select-Object -First 1).Name.Trim()
+          } else {
+            $line = (Select-String -Path /proc/cpuinfo -Pattern '^model name\s*:' | Select-Object -First 1).Line
+            ($line -split ':', 2)[1].Trim()
+          }
+          @{ cpu = $cpu; os = $env:RUNNER_OS; arch = $env:RUNNER_ARCH; image = $env:ImageOS; commit = $env:GITHUB_SHA; llvm = '23.1.6' } |
+            ConvertTo-Json | Set-Content -Encoding utf8 "$out/host.json"
+          python bench/inspect_simd.py --objdump "$objdump" --out "$out"
+          & $benchmark --benchmark_min_time=0.01s --benchmark_min_warmup_time=0.01 --benchmark_repetitions=5 --benchmark_enable_random_interleaving=true "--benchmark_out=$out/native.json" --benchmark_out_format=json
+          python bench/python_baseline.py --out "$out/python.json"
+
+      - name: Upload the Stage 04 evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: stage-04-${{ matrix.platform }}
+          path: .local/evidence/stage-04/
+          include-hidden-files: true
