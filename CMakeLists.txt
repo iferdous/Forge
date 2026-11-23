@@ -1,0 +1,42 @@
+cmake_minimum_required(VERSION 3.25)
+
+project(Forge LANGUAGES CXX)
+
+find_package(LLVM 23.1.6 EXACT REQUIRED CONFIG)
+message(STATUS "Forge LLVM SDK: ${LLVM_PACKAGE_VERSION} (${LLVM_DIR})")
+message(STATUS "LLVM host triple: ${LLVM_HOST_TRIPLE}")
+
+include(CTest)
+
+if(BUILD_TESTING)
+    include(FetchContent)
+
+    # Preserve the parent project's MSVC runtime selection in GoogleTest.
+    set(gtest_force_shared_crt ON)
+    set(INSTALL_GTEST OFF)
+    FetchContent_Declare(
+        googletest
+        URL https://codeload.github.com/google/googletest/tar.gz/refs/tags/v1.17.0
+        URL_HASH SHA256=65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c
+    )
+    FetchContent_MakeAvailable(googletest)
+
+    llvm_map_components_to_libnames(llvm_libraries Core OrcJIT native)
+
+    add_executable(forge_jit_smoke tests/jit_smoke_test.cpp)
+    target_compile_features(forge_jit_smoke PRIVATE cxx_std_20)
+    set_target_properties(forge_jit_smoke PROPERTIES CXX_EXTENSIONS OFF)
+    target_include_directories(forge_jit_smoke SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
+    target_link_libraries(forge_jit_smoke PRIVATE GTest::gtest_main ${llvm_libraries})
+
+    separate_arguments(llvm_definitions NATIVE_COMMAND "${LLVM_DEFINITIONS}")
+    target_compile_options(forge_jit_smoke PRIVATE ${llvm_definitions})
+    if(MSVC)
+        target_compile_options(forge_jit_smoke PRIVATE /W4)
+    else()
+        target_compile_options(forge_jit_smoke PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+
+    include(GoogleTest)
+    gtest_discover_tests(forge_jit_smoke)
+endif()
