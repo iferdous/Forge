@@ -75,7 +75,7 @@ for film in fusion lanes tradeoffs; do
   npx --yes hyperframes@0.9.84 render "$dir" \
     --output "$PWD/$dir/$film.mp4" --fps 24 --workers 1 --quality looks
   ffmpeg -y -i "$dir/$film.mp4" \
-    -vf "subtitles=$dir/$film.vtt:force_style='FontName=Arial,FontSize=12,MarginV=7,BorderStyle=3,Outline=3,Shadow=0'" \
+    -vf "subtitles=$dir/$film.vtt:force_style='FontName=Arial,FontSize=12,MarginV=30,BorderStyle=3,Outline=3,Shadow=0'" \
     -c:v libx264 -preset fast -crf 18 -c:a copy -movflags +faststart "showcase/assets/$film.mp4"
   cp "$dir/$film.vtt" "showcase/assets/$film.vtt"
 done
