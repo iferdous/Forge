@@ -45,7 +45,7 @@ class _Instruction:
 
 class _Parser:
     def __init__(self, source: str, inputs: tuple[str, ...]):
-        self.lines = source.splitlines()
+        self.lines = source.replace("\r\n", "\n").replace("\r", "\n").split("\n")
         self.inputs = {name: index for index, name in enumerate(inputs)}
         self.instructions: list[_Instruction] = []
         self.visited = 0

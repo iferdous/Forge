@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 
 import forge
+from forge._forge_ir import GraphBuilder, Op, SourceLocation
 
 
 class ReferenceTests(unittest.TestCase):
@@ -33,6 +34,15 @@ class ReferenceTests(unittest.TestCase):
         )
         self.assertEqual(program.graph(x).dump(), expected)
         self.assertEqual(program.graph(x.copy()).dump(), expected)
+
+        native = GraphBuilder()
+        input_node = native.input(0, [4], SourceLocation(1, 7))
+        two = native.literal(2, SourceLocation(1, 11))
+        add = native.binary(Op.ADD, input_node, two, SourceLocation(1, 7))
+        three = native.literal(3, SourceLocation(1, 16))
+        product = native.binary(Op.MULTIPLY, add, three, SourceLocation(1, 6))
+        root = native.sqrt(product, SourceLocation(1, 1))
+        self.assertEqual(native.finish(root).dump(), expected)
 
     def test_binding_preserves_input_order_and_bitwise_literal_identity(self):
         x = np.array([2], dtype=np.float32)
@@ -123,6 +133,12 @@ class ReferenceTests(unittest.TestCase):
         with self.assertRaises(SyntaxError) as raised:
             forge.compile("(x +\n missing)", inputs=("x",))
         self.assertEqual((raised.exception.lineno, raised.exception.offset), (2, 2))
+
+        source = "(x + \fmissing)"
+        with self.assertRaises(SyntaxError) as raised:
+            forge.compile(source, inputs=("x",))
+        self.assertEqual(raised.exception.text, source)
+        self.assertEqual((raised.exception.lineno, raised.exception.offset), (1, 7))
 
     def test_parser_bounds(self):
         balanced = "x"

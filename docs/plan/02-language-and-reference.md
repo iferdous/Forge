@@ -18,6 +18,42 @@
 - Compare bits per result within the pointwise contract. Include `-0.0`, subnormals, overflow to infinity, NaN classification, and negative square root. Use deterministic random seeds for property comparisons.
 - Keep enough cases in GoogleTest to exercise the C++ graph API directly. Cover parser, reference, and CLI or Python boundary failures in the corresponding frontend tests.
 
+## Try the frontend on the M3
+
+Open a terminal in the Forge checkout. Use Python 3.12 or newer and CMake 3.25 or newer. The x64 CI jobs use Python 3.13. The frontend preset builds the C++ graph and Python module without loading LLVM.
+
+~~~sh
+mkdir -p .local/tmp .local/cache
+export TMPDIR="$PWD/.local/tmp" XDG_CACHE_HOME="$PWD/.local/cache"
+export PIP_CACHE_DIR="$PWD/.local/cache/pip"
+python3 -m venv .local/venv
+.local/venv/bin/python -m pip install -r requirements.txt
+cmake --preset frontend "-DPython_EXECUTABLE=$PWD/.local/venv/bin/python"
+cmake --build --preset frontend --parallel
+ctest --preset frontend
+PYTHONPATH="$PWD/.local/build/frontend/python" .local/venv/bin/python -i
+~~~
+
+~~~python
+import numpy as np
+import forge
+
+x = np.array([1, 10, 25, 46], dtype=np.float32)
+program = forge.compile("sqrt((x + 2) * 3)", inputs=("x",))
+print(program.reference(x).tolist())  # [3.0, 6.0, 9.0, 12.0]
+print(program.graph(x).dump())
+~~~
+
+The graph lists operations, shapes, source locations, and use counts. Change the expression and call `forge.compile` again to explore. This stage evaluates the NumPy reference. Stage 03 adds LLVM code generation.
+
+## Implemented expression contract
+
+- Expressions use ASCII input names, signed numeric literals, `+`, `*`, parentheses, and `sqrt(expression)`. Multiplication binds more tightly than addition. A sign applies to a literal. The parser accepts up to 4,096 source characters, 32 levels of expression nesting, and 256 visited expression nodes.
+- Input names define positional order. Values are ordinary NumPy `ndarray` objects with native-endian `float32` dtype, rank one or two, and C-contiguous storage. Tensor operands must have equal shapes. Scalar expressions broadcast explicitly when combined with an array. An expression's output is an independently owned array.
+- Integer literals round directly to binary32 with ties to even. Floating literals first take the binary64 value parsed by Python, then round to binary32. Literals must stay finite. The default floating-point environment provides ties-to-even rounding and gradual underflow. Each operation rounds independently. Invalid square roots return NaN. Tests compare non-NaN bits and classify NaNs.
+- Repeated inputs and structurally identical subexpressions share graph nodes and keep their first source location. Ordered operands stay in source order. Array byte-size arithmetic is checked in C++, including shapes with zero-sized dimensions.
+- Syntax and unknown-name failures raise `SyntaxError`. Array or argument type failures raise `TypeError`. Shape, layout, and result-rank failures raise `ValueError`.
+
 ## Exit evidence
 
 A short language spec, fixture-based graph dumps, and passing reference tests on both CI platforms. The same expression and shapes yield the same typed graph and reference results before and after wiring the parser to C++.
