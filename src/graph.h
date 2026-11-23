@@ -10,6 +10,7 @@ using NodeId = std::size_t;
 using Shape = std::vector<std::size_t>;
 
 enum class Op { input, literal, splat, add, multiply, sqrt };
+[[nodiscard]] const char* op_name(Op op);
 
 struct SourceLocation {
     std::size_t line = 1;

@@ -189,13 +189,14 @@ struct CompiledKernel::Impl {
 Workspace::Workspace(std::size_t inputs, std::size_t slots, std::size_t scratch_elements)
     : scratch_(scratch_elements), inputs_(inputs), buffers_(slots) {}
 
-CompiledKernel::CompiledKernel(const Graph& graph, std::size_t input_count, KernelMode mode)
+CompiledKernel::CompiledKernel(const Graph& graph, std::size_t input_count, KernelMode mode,
+                               FusionMode fusion)
     : impl_(std::make_unique<Impl>()) {
     if (mode == KernelMode::avx2 && !host_has_avx2()) {
         throw std::invalid_argument("Native AVX2 requires an x86-64 process with usable AVX2");
     }
     initialize_targets();
-    impl_->plan = detail::plan_kernel(graph, input_count);
+    impl_->plan = detail::plan_kernel(graph, input_count, fusion);
     impl_->count = elements(impl_->plan.output_shape);
     const auto scratch_slots = impl_->plan.slot_count - 1;
     if (scratch_slots != 0 &&
@@ -233,6 +234,7 @@ const std::vector<std::optional<Shape>>& CompiledKernel::input_shapes() const {
 }
 
 const KernelInfo& CompiledKernel::info() const { return impl_->info; }
+const detail::KernelPlan& CompiledKernel::plan() const { return impl_->plan; }
 const std::string& CompiledKernel::object() const { return impl_->object; }
 
 Workspace CompiledKernel::make_workspace() const {
@@ -272,13 +274,14 @@ void CompiledKernel::run(std::span<const InputBuffer> inputs, OutputBuffer outpu
     impl_->entry(impl_->count, workspace.inputs_.data(), workspace.buffers_.data());
 }
 
-Assembly emit_x86_linux(const Graph& graph, std::size_t input_count, KernelMode mode) {
+Assembly emit_x86_linux(const Graph& graph, std::size_t input_count, KernelMode mode,
+                        FusionMode fusion) {
     initialize_targets();
     auto target = target_builder(llvm::Triple("x86_64-unknown-linux-gnu"), mode);
     auto machine = require(target.createTargetMachine(), "Creating the Linux x86-64 target");
     llvm::LLVMContext context;
     std::vector<std::string> remarks;
-    auto module = build_module(graph, detail::plan_kernel(graph, input_count), context, *machine,
+    auto module = build_module(graph, detail::plan_kernel(graph, input_count, fusion), context, *machine,
                                mode, remarks);
     auto info = inspect(*module, *machine, std::move(remarks));
     llvm::SmallVector<char> buffer;

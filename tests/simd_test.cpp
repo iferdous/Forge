@@ -83,12 +83,16 @@ private:
     std::size_t allocation_;
 };
 
-Graph binary_graph(std::size_t size) {
+Graph binary_graph(std::size_t size, bool chain = false) {
     GraphBuilder builder;
     auto left = builder.input(0, {size}, {});
     auto right = builder.input(1, {size}, {});
-    auto add = builder.binary(Op::add, left, right, {});
-    return std::move(builder).finish(add);
+    auto result = builder.binary(Op::add, left, right, {});
+    if (chain) {
+        const auto half = builder.literal(0.5F, {});
+        result = builder.binary(Op::multiply, result, half, {});
+    }
+    return std::move(builder).finish(result);
 }
 
 TEST(Avx2Jit, GuardsBothInputAndOutputAtTheScalarRemainder) {
@@ -103,18 +107,24 @@ TEST(Avx2Jit, GuardsBothInputAndOutputAtTheScalarRemainder) {
         for (std::size_t i = 0; i < size; ++i) {
             left[i] = static_cast<float>(i % 71);
             right[i] = static_cast<float>(i % 13) * 0.25F;
-            expected[i] = left[i] + right[i];
+            expected[i] = (left[i] + right[i]) * 0.5F;
         }
         if (bytes != 0) {
             std::memcpy(lhs.data().data(), left.data(), bytes);
             std::memcpy(rhs.data().data(), right.data(), bytes);
         }
         const std::array inputs{InputBuffer(lhs.data()), InputBuffer(rhs.data())};
-        const CompiledKernel kernel(binary_graph(size), 2, KernelMode::avx2);
-        auto workspace = kernel.make_workspace();
-        kernel.run(inputs, destination.data(), workspace);
-        if (bytes != 0) {
-            EXPECT_EQ(std::memcmp(destination.data().data(), expected.data(), bytes), 0);
+        const auto graph = binary_graph(size, true);
+        for (auto fusion : {FusionMode::disabled, FusionMode::enabled}) {
+            const CompiledKernel kernel(graph, 2, KernelMode::avx2, fusion);
+            auto workspace = kernel.make_workspace();
+            if (bytes != 0) {
+                std::memset(destination.data().data(), 0xA5, bytes);
+            }
+            kernel.run(inputs, destination.data(), workspace);
+            if (bytes != 0) {
+                EXPECT_EQ(std::memcmp(destination.data().data(), expected.data(), bytes), 0);
+            }
         }
     }
 }

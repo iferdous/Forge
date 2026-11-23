@@ -28,7 +28,7 @@ function(forge_target_defaults target)
     endif()
 endfunction()
 
-add_library(forge_graph STATIC src/graph.cpp)
+add_library(forge_graph STATIC src/graph.cpp src/kernel_plan.cpp)
 target_include_directories(forge_graph PUBLIC src)
 set_target_properties(forge_graph PROPERTIES POSITION_INDEPENDENT_CODE ON)
 forge_target_defaults(forge_graph)
@@ -129,7 +129,7 @@ if(BUILD_TESTING)
 
     include(GoogleTest)
 
-    add_executable(forge_graph_tests tests/graph_test.cpp)
+    add_executable(forge_graph_tests tests/graph_test.cpp tests/kernel_plan_test.cpp)
     target_link_libraries(forge_graph_tests PRIVATE forge_graph GTest::gtest_main)
     forge_target_defaults(forge_graph_tests)
     gtest_discover_tests(forge_graph_tests)

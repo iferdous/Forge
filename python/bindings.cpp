@@ -1,4 +1,4 @@
-#include "graph.h"
+#include "kernel_plan.h"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -40,6 +40,15 @@ PYBIND11_MODULE(_forge_ir, module) {
         .def_property_readonly("nodes", &Graph::nodes, py::return_value_policy::copy)
         .def_property_readonly("output", &Graph::output)
         .def("dump", &Graph::dump);
+
+    py::class_<detail::KernelPlan>(module, "KernelPlan")
+        .def_property_readonly("loop_count", &detail::KernelPlan::loop_count)
+        .def_property_readonly("temporary_arrays", &detail::KernelPlan::temporary_arrays)
+        .def("dump", &detail::KernelPlan::dump);
+
+    module.def("plan_kernel", [](const Graph& graph, std::size_t inputs, bool fusion) {
+        return detail::plan_kernel(graph, inputs, fusion ? FusionMode::enabled : FusionMode::disabled);
+    });
 
     py::class_<GraphBuilder>(module, "GraphBuilder")
         .def(py::init<>())

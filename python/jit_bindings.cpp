@@ -50,8 +50,9 @@ void check_shape(const py::array& array, const Shape& expected) {
 
 class PythonKernel {
 public:
-    PythonKernel(const Graph& graph, std::size_t input_count, std::string_view target)
-        : kernel_(graph, input_count, kernel_mode(target)), workspace_(kernel_.make_workspace()) {}
+    PythonKernel(const Graph& graph, std::size_t input_count, std::string_view target, bool fusion)
+        : kernel_(graph, input_count, kernel_mode(target),
+                  fusion ? FusionMode::enabled : FusionMode::disabled), workspace_(kernel_.make_workspace()) {}
 
     py::array operator()(const py::args& arguments) {
         std::vector<py::ssize_t> shape(kernel_.output_shape().begin(), kernel_.output_shape().end());
@@ -65,6 +66,7 @@ public:
     }
 
     const KernelInfo& info() const { return kernel_.info(); }
+    const detail::KernelPlan& plan() const { return kernel_.plan(); }
     py::bytes object() const { return py::bytes(kernel_.object()); }
 
 private:
@@ -114,14 +116,16 @@ void bind_jit(py::module_& module) {
         .def_readonly("text", &Assembly::text);
 
     py::class_<PythonKernel>(module, "CompiledKernel")
-        .def(py::init<const Graph&, std::size_t, std::string_view>())
+        .def(py::init<const Graph&, std::size_t, std::string_view, bool>())
         .def("__call__", &PythonKernel::operator())
         .def("run_into", &PythonKernel::run_into, py::arg("output"))
         .def_property_readonly("info", &PythonKernel::info)
+        .def_property_readonly("plan", &PythonKernel::plan)
         .def_property_readonly("object", &PythonKernel::object);
 
     module.def("has_avx2", &host_has_avx2);
-    module.def("emit_x86_linux", [](const Graph& graph, std::size_t inputs, std::string_view target) {
-        return emit_x86_linux(graph, inputs, kernel_mode(target));
+    module.def("emit_x86_linux", [](const Graph& graph, std::size_t inputs, std::string_view target, bool fusion) {
+        return emit_x86_linux(graph, inputs, kernel_mode(target),
+                              fusion ? FusionMode::enabled : FusionMode::disabled);
     });
 }

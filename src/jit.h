@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graph.h"
+#include "kernel_plan.h"
 
 #include <memory>
 #include <optional>
@@ -42,7 +42,8 @@ class Workspace {
 class CompiledKernel {
 public:
     CompiledKernel(const Graph& graph, std::size_t input_count,
-                   KernelMode mode = KernelMode::scalar);
+                   KernelMode mode = KernelMode::scalar,
+                   FusionMode fusion = FusionMode::enabled);
     ~CompiledKernel();
 
     CompiledKernel(const CompiledKernel&) = delete;
@@ -51,6 +52,7 @@ public:
     [[nodiscard]] const Shape& output_shape() const;
     [[nodiscard]] const std::vector<std::optional<Shape>>& input_shapes() const;
     [[nodiscard]] const KernelInfo& info() const;
+    [[nodiscard]] const detail::KernelPlan& plan() const;
     [[nodiscard]] const std::string& object() const;
     [[nodiscard]] Workspace make_workspace() const;
 
@@ -64,6 +66,7 @@ private:
 
 // Emit Linux x86-64 assembly without linking or executing the foreign object.
 [[nodiscard]] Assembly emit_x86_linux(const Graph& graph, std::size_t input_count,
-                                     KernelMode mode = KernelMode::scalar);
+                                     KernelMode mode = KernelMode::scalar,
+                                     FusionMode fusion = FusionMode::enabled);
 
 } // namespace forge

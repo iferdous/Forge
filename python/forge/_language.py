@@ -153,17 +153,21 @@ class Program:
         """Evaluate the typed graph using rounded float32 NumPy operations."""
         return evaluate(self.graph(*arrays), arrays)
 
-    def jit(self, *example_arrays: np.ndarray, target: str = "scalar"):
+    def plan(self, *example_arrays: np.ndarray, fusion: bool = True):
+        """Describe the scheduled loops and intermediate arrays without invoking LLVM."""
+        return _forge_ir.plan_kernel(self.graph(*example_arrays), len(self.inputs), fusion)
+
+    def jit(self, *example_arrays: np.ndarray, target: str = "scalar", fusion: bool = True):
         """Compile a reusable native kernel for the example input shapes."""
         if not hasattr(_forge_ir, "CompiledKernel"):
             raise RuntimeError("LLVM JIT support requires a build with FORGE_ENABLE_JIT=ON")
-        return _forge_ir.CompiledKernel(self.graph(*example_arrays), len(self.inputs), target)
+        return _forge_ir.CompiledKernel(self.graph(*example_arrays), len(self.inputs), target, fusion)
 
-    def emit_x86(self, *example_arrays: np.ndarray, target: str = "scalar"):
+    def emit_x86(self, *example_arrays: np.ndarray, target: str = "scalar", fusion: bool = True):
         """Inspect Linux x86-64 assembly without executing it."""
         if not hasattr(_forge_ir, "emit_x86_linux"):
             raise RuntimeError("LLVM assembly emission requires a build with FORGE_ENABLE_JIT=ON")
-        return _forge_ir.emit_x86_linux(self.graph(*example_arrays), len(self.inputs), target)
+        return _forge_ir.emit_x86_linux(self.graph(*example_arrays), len(self.inputs), target, fusion)
 
 
 def compile(source: str, *, inputs: tuple[str, ...] | list[str]) -> Program:

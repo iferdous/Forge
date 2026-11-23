@@ -45,7 +45,8 @@ TEST(ScalarJit, ExecutesTheDemoAcrossShapeBoundaries) {
 
 TEST(ScalarJit, ProvidesUnfusedScalarIrAndCrossAssembly) {
     const auto graph = demo_graph(9);
-    CompiledKernel kernel(graph, 1);
+    CompiledKernel kernel(graph, 1, KernelMode::scalar, FusionMode::disabled);
+    EXPECT_EQ(kernel.plan().loop_count(), 3U);
     EXPECT_NE(kernel.info().ir.find("fadd float"), std::string::npos);
     EXPECT_NE(kernel.info().ir.find("fmul float"), std::string::npos);
     EXPECT_NE(kernel.info().ir.find("llvm.sqrt.f32"), std::string::npos);

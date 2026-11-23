@@ -29,6 +29,8 @@ std::string shape_text(const Shape& shape) {
     return text.str();
 }
 
+} // namespace
+
 const char* op_name(Op op) {
     switch (op) {
     case Op::input: return "input";
@@ -40,8 +42,6 @@ const char* op_name(Op op) {
     }
     throw std::logic_error("Unknown graph operation");
 }
-
-} // namespace
 
 Graph::Graph(std::vector<Node> nodes, NodeId output)
     : nodes_(std::move(nodes)), output_(output) {}
