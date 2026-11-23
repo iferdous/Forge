@@ -160,6 +160,102 @@ llvm::Function* emit_reduction(llvm::Module& module, Op op, NodeId id, std::size
     return function;
 }
 
+template <typename Body>
+void emit_counted_loop(llvm::IRBuilder<>& builder, llvm::Value* start, llvm::Value* end,
+                       std::size_t step, llvm::StringRef name, Body body, bool simd = false) {
+    auto* preheader = builder.GetInsertBlock();
+    auto* function = preheader->getParent();
+    auto& context = builder.getContext();
+    auto* loop = llvm::BasicBlock::Create(context, llvm::Twine(name) + ".body", function);
+    auto* exit = llvm::BasicBlock::Create(context, llvm::Twine(name) + ".exit", function);
+    builder.CreateCondBr(builder.CreateICmpULT(start, end), loop, exit);
+    builder.SetInsertPoint(loop);
+    auto* index = builder.CreatePHI(builder.getInt64Ty(), 2, name);
+    index->addIncoming(start, preheader);
+    body(index);
+    auto* next = builder.CreateNUWAdd(index, builder.getInt64(step));
+    index->addIncoming(next, builder.GetInsertBlock());
+    auto* backedge = builder.CreateCondBr(builder.CreateICmpULT(next, end), loop, exit);
+    if (simd) {
+        set_loop_options(backedge, true);
+    }
+    builder.SetInsertPoint(exit);
+}
+
+llvm::Function* emit_matmul(llvm::Module& module, NodeId id, const Shape& left_shape,
+                            const Shape& right_shape, bool simd) {
+    auto& context = module.getContext();
+    llvm::IRBuilder<> builder(context);
+    auto* ptr = builder.getPtrTy();
+    auto* type = llvm::FunctionType::get(builder.getVoidTy(), {ptr, ptr, ptr}, false);
+    auto* function = llvm::Function::Create(type, llvm::Function::InternalLinkage,
+                                           "forge_matmul_" + std::to_string(id), module);
+    function->addFnAttr(llvm::Attribute::NoInline);
+    function->addFnAttr(llvm::Attribute::NoBuiltin);
+    auto* output = function->getArg(0);
+    auto* left = function->getArg(1);
+    auto* right = function->getArg(2);
+    output->addAttr(llvm::Attribute::NoAlias);
+    left->addAttr(llvm::Attribute::ReadOnly);
+    right->addAttr(llvm::Attribute::ReadOnly);
+    builder.SetInsertPoint(llvm::BasicBlock::Create(context, "entry", function));
+
+    if (left_shape[0] == 0 || right_shape[1] == 0) {
+        builder.CreateRetVoid();
+        return function;
+    }
+
+    constexpr std::size_t tile_m = 16, tile_n = 32, tile_k = 32;
+    auto* m = builder.getInt64(left_shape[0]);
+    auto* k = builder.getInt64(left_shape[1]);
+    auto* n = builder.getInt64(right_shape[1]);
+    auto* f32 = builder.getFloatTy();
+    auto* zero_index = builder.getInt64(0);
+    auto* zero_value = llvm::ConstantFP::get(f32, 0.0);
+    const auto end_of_tile = [&](llvm::Value* start, llvm::Value* bound, std::size_t tile) {
+        auto* next = builder.CreateNUWAdd(start, builder.getInt64(tile));
+        return builder.CreateBinaryIntrinsic(llvm::Intrinsic::umin, next, bound);
+    };
+    const auto address = [&](llvm::Value* matrix, llvm::Value* stride,
+                             llvm::Value* row, llvm::Value* col) {
+        auto* index = builder.CreateNUWAdd(builder.CreateNUWMul(row, stride), col);
+        return builder.CreateInBoundsGEP(f32, matrix, index);
+    };
+    const auto load = [&](llvm::Value* ptr) {
+        return builder.CreateAlignedLoad(f32, ptr, llvm::Align(1));
+    };
+
+    emit_counted_loop(builder, zero_index, m, tile_m, "row.tile", [&](auto* row_begin) {
+        auto* row_end = end_of_tile(row_begin, m, tile_m);
+        emit_counted_loop(builder, zero_index, n, tile_n, "col.tile", [&](auto* col_begin) {
+            auto* col_end = end_of_tile(col_begin, n, tile_n);
+            emit_counted_loop(builder, row_begin, row_end, 1, "zero.row", [&](auto* row) {
+                emit_counted_loop(builder, col_begin, col_end, 1, "zero.col", [&](auto* col) {
+                    builder.CreateAlignedStore(zero_value, address(output, n, row, col), llvm::Align(1));
+                });
+            });
+            emit_counted_loop(builder, zero_index, k, tile_k, "inner.tile", [&](auto* inner_begin) {
+                auto* inner_end = end_of_tile(inner_begin, k, tile_k);
+                emit_counted_loop(builder, row_begin, row_end, 1, "row", [&](auto* row) {
+                    // Traverse K in increasing order. Vector lanes update distinct columns.
+                    emit_counted_loop(builder, inner_begin, inner_end, 1, "inner", [&](auto* inner) {
+                        auto* a = load(address(left, k, row, inner));
+                        emit_counted_loop(builder, col_begin, col_end, 1, "col", [&](auto* col) {
+                            auto* b = load(address(right, n, inner, col));
+                            auto* c = address(output, n, row, col);
+                            auto* product = builder.CreateFMul(a, b, "product");
+                            auto* sum = builder.CreateFAdd(load(c), product, "sum");
+                            builder.CreateAlignedStore(sum, c, llvm::Align(1));
+                        }, simd);
+                    });
+                });
+            });
+        });
+    });
+    builder.CreateRetVoid();
+    return function;
+}
+
 } // namespace
 
 void lower_kernel(llvm::Module& module, const Graph& graph, const KernelPlan& plan, bool simd) {
@@ -214,16 +310,19 @@ void lower_kernel(llvm::Module& module, const Graph& graph, const KernelPlan& pl
                 auto* reduction = emit_reduction(module, node.op, id, length);
                 values[id] = builder.CreateCall(reduction, arguments);
             } else {
-                if (node.op == Op::matmul) {
-                    throw std::invalid_argument("Matrix multiplication JIT lowering is unavailable");
-                }
-                auto* loop = emit_loop(module, graph, *next_region, arguments, simd);
                 auto* output = pointer_at(buffers, plan.slots[id]);
-                llvm::Value* length = node.shape == plan.output_shape
-                    ? static_cast<llvm::Value*>(count) : builder.getInt64(element_count(node.shape));
-                llvm::SmallVector<llvm::Value*, 6> call_arguments{output, length};
-                call_arguments.append(arguments.begin(), arguments.end());
-                builder.CreateCall(loop, call_arguments);
+                if (node.op == Op::matmul) {
+                    const auto a = node.operands[0], b = node.operands[1];
+                    auto* matmul = emit_matmul(module, id, nodes[a].shape, nodes[b].shape, simd);
+                    builder.CreateCall(matmul, {output, values[a], values[b]});
+                } else {
+                    auto* loop = emit_loop(module, graph, *next_region, arguments, simd);
+                    llvm::Value* length = node.shape == plan.output_shape
+                        ? static_cast<llvm::Value*>(count) : builder.getInt64(element_count(node.shape));
+                    llvm::SmallVector<llvm::Value*, 6> call_arguments{output, length};
+                    call_arguments.append(arguments.begin(), arguments.end());
+                    builder.CreateCall(loop, call_arguments);
+                }
                 values[id] = output;
             }
             ++next_region;

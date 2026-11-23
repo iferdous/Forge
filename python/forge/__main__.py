@@ -85,7 +85,7 @@ def main():
     except (OverflowError, SyntaxError, TypeError, ValueError) as error:
         parser.error(str(error))
 
-    print("Enter an expression using +, *, or sqrt(). Try sqrt((x + 2) * 3) with the sample x.")
+    print("Enter +, *, @, sqrt(), sum(), max(), or mean(). Try mean((x + 2) * 3) with the sample x.")
     print(f"Available inputs: {', '.join(arrays)}. Enter a blank line to quit.")
     while True:
         try:

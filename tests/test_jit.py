@@ -242,6 +242,46 @@ class AggregateJitTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "disjoint"):
             reduction.run_into(x[:1].reshape(()), x)
 
+    def test_matmul_tiles_zero_dimensions_and_float_rounding(self):
+        rng = np.random.default_rng(620261122)
+        program = forge.compile("a @ b", inputs=("a", "b"))
+        fixtures = []
+        for m, k, n in ((1, 1, 1), (16, 32, 32), (17, 35, 33), (3, 65, 9),
+                         (0, 2, 3), (2, 2, 0), (2, 0, 3)):
+            fixtures.append((rng.standard_normal((m, k), dtype=np.float32),
+                             rng.standard_normal((k, n), dtype=np.float32)))
+        left = np.array([[-1, 0], [np.inf, -0.0]], dtype=np.float32)
+        left.view(np.uint32)[0, 1] = 0x3F800001
+        right = np.array([[1, 0], [0, np.nan]], dtype=np.float32)
+        right.view(np.uint32)[1, 0] = 0x3F7FFFFE
+        fixtures.append((left, right))
+        for a, b in fixtures:
+            expected = program.reference(a, b)
+            for target in ("scalar", "avx2") if forge.has_avx2() else ("scalar",):
+                with self.subTest(left=a.shape, right=b.shape, target=target):
+                    kernel = program.jit(a, b, target=target)
+                    actual = kernel(a, b)
+                    self.assertTrue(actual.flags.owndata)
+                    self.assertFloat32BitsEqual(actual, expected)
+                    out = np.full(expected.shape, np.nan, dtype=np.float32)
+                    kernel.run_into(out, a, b)
+                    self.assertFloat32BitsEqual(out, expected)
+
+    def test_matmul_composes_with_pointwise_fusion_and_scalar_reduction(self):
+        a = np.arange(35, dtype=np.float32).reshape(5, 7)
+        b = np.arange(63, dtype=np.float32).reshape(7, 9)
+        program = forge.compile("mean((a + 2) @ (b * 3) + 1)", inputs=("a", "b"))
+        kernel = program.jit(a, b)
+        self.assertEqual((kernel.plan.loop_count, kernel.plan.temporary_arrays), (5, 4))
+        self.assertFloat32BitsEqual(kernel(a, b), program.reference(a, b))
+
+        square = a[:, :5].copy()
+        shared = forge.compile("a @ a", inputs=("a",))
+        kernel = shared.jit(square)
+        self.assertFloat32BitsEqual(kernel(square), shared.reference(square))
+        with self.assertRaisesRegex(ValueError, "disjoint"):
+            kernel.run_into(square, square)
+
 
 if __name__ == "__main__":
     unittest.main()
