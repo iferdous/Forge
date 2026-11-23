@@ -1,6 +1,8 @@
+from concurrent.futures import ThreadPoolExecutor
 import subprocess
 import sys
 import unittest
+import weakref
 
 import numpy as np
 
@@ -281,6 +283,101 @@ class AggregateJitTests(unittest.TestCase):
         self.assertFloat32BitsEqual(kernel(square), shared.reference(square))
         with self.assertRaisesRegex(ValueError, "disjoint"):
             kernel.run_into(square, square)
+
+
+@unittest.skipUnless(hasattr(_forge_ir, "CompiledKernel"), "LLVM JIT is disabled")
+class RuntimeTests(unittest.TestCase):
+    def setUp(self):
+        forge.clear_cache()
+        self.addCleanup(forge.clear_cache)
+
+    def test_cache_shares_code_across_parses_without_sharing_handles_or_retaining_inputs(self):
+        example = np.arange(9, dtype=np.float32)
+        borrowed = weakref.ref(example)
+        first = forge.compile("x + 2", inputs=("x",)).jit(example, cache=True)
+        second = forge.compile("(other + 2.0)", inputs=("other",)).jit(example, cache=True)
+        self.assertEqual(tuple(forge.cache_info()), (1, 1, 16, 1))
+        self.assertIsNot(first, second)
+        self.assertIs(first.info, second.info)
+        previous = first(example)
+        del example
+        self.assertIsNone(borrowed())
+        changed = np.zeros(9, dtype=np.float32)
+        np.testing.assert_array_equal(second(changed), changed + 2)
+        np.testing.assert_array_equal(previous, np.arange(9, dtype=np.float32) + 2)
+        self.assertTrue(previous.flags.owndata)
+
+    def test_cache_isolates_rank_extent_operation_order_literal_bits_and_modes(self):
+        size = np.ones(9, dtype=np.float32)
+        positive = forge.compile("x * 0.0", inputs=("x",))
+        negative = forge.compile("x * -0.0", inputs=("x",))
+        ordered = forge.compile("x + y", inputs=("x", "y"))
+        reversed_ = forge.compile("y + x", inputs=("x", "y"))
+        handles = [
+            positive.jit(size, cache=True), negative.jit(size, cache=True),
+            positive.jit(size.reshape(1, 9), cache=True), positive.jit(size[:8], cache=True),
+            positive.jit(size, fusion=False, cache=True),
+            ordered.jit(size, size, cache=True), reversed_.jit(size, size, cache=True),
+        ]
+        if forge.has_avx2():
+            handles.append(positive.jit(size, target="avx2", cache=True))
+        self.assertEqual(forge.cache_info().currsize, len(handles))
+        self.assertEqual(forge.cache_info().hits, 0)
+        np.testing.assert_array_equal(handles[0](size).view(np.uint32), 0)
+        np.testing.assert_array_equal(handles[1](size).view(np.uint32), 0x80000000)
+
+    def test_cache_eviction_and_clear_leave_live_handles_executable(self):
+        program = forge.compile("sqrt((x + 2) * 3)", inputs=("x",))
+        capacity = forge.cache_info().maxsize
+        retained = []
+        for length in range(1, capacity + 1):
+            retained.append(program.jit(np.empty(length, dtype=np.float32), cache=True))
+        first = program.jit(np.empty(1, dtype=np.float32), cache=True)
+        self.assertIs(first.info, retained[0].info)
+        program.jit(np.empty(capacity + 1, dtype=np.float32), cache=True)
+        self.assertEqual(forge.cache_info().currsize, capacity)
+        replacement = program.jit(np.empty(2, dtype=np.float32), cache=True)
+        self.assertIsNot(replacement.info, retained[1].info)
+        forge.clear_cache()
+        self.assertEqual(forge.cache_info().currsize, 0)
+        np.testing.assert_array_equal(retained[1](np.array([1, 10], dtype=np.float32)), [3, 6])
+
+    def test_failed_compiles_leave_cache_usable_and_threaded_requests_share_code(self):
+        program = forge.compile("x + 2", inputs=("x",))
+        x = np.arange(17, dtype=np.float32)
+        with self.assertRaisesRegex(ValueError, "scalar.*avx2"):
+            program.jit(x, target="invalid", cache=True)
+        with self.assertRaises(TypeError):
+            program.jit(x.astype(np.float64), cache=True)
+        self.assertEqual(forge.cache_info().currsize, 0)
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            handles = list(executor.map(lambda _: program.jit(x, cache=True), range(8)))
+            outputs = list(executor.map(lambda kernel: kernel(x), handles))
+        self.assertEqual(tuple(forge.cache_info()), (7, 2, 16, 1))
+        for result in outputs:
+            np.testing.assert_array_equal(result, x + 2)
+
+    def test_bindings_borrow_byte_offset_buffers_and_reject_hidden_conversions(self):
+        stores = [np.empty(17 * 4 + 1, dtype=np.uint8) for _ in range(2)]
+        x, out = [np.ndarray(17, dtype=np.float32, buffer=store, offset=1) for store in stores]
+        x[:] = np.arange(17)
+        x.setflags(write=False)
+        self.assertFalse(x.flags.aligned)
+        program = forge.compile("x + 2", inputs=("x",))
+        for target in ("scalar", "avx2") if forge.has_avx2() else ("scalar",):
+            kernel = program.jit(x, target=target)
+            kernel.run_into(out, x)
+            np.testing.assert_array_equal(out, x + 2)
+            for invalid in (x.tolist(), x.astype(">f4" if sys.byteorder == "little" else "<f4"),
+                            x.astype(np.float64)):
+                with self.assertRaises(TypeError):
+                    kernel(invalid)
+            with self.assertRaises(ValueError):
+                kernel.run_into(np.empty(34, dtype=np.float32)[::2], x)
+            with self.assertRaises(ValueError):
+                kernel.run_into(x, x)
+        with self.assertRaises(TypeError):
+            _forge_ir.CompiledKernel(None)
 
 
 if __name__ == "__main__":

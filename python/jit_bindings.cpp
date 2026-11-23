@@ -5,6 +5,8 @@
 #include <pybind11/stl.h>
 
 #include <cstddef>
+#include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -34,6 +36,11 @@ py::array checked_array(py::handle value) {
     if (array.ndim() > 2 || !(array.flags() & py::array::c_style)) {
         throw py::value_error("Expected a C-contiguous float32 buffer of rank at most two");
     }
+    // The IR uses byte-aligned loads and stores. Neither float-alignment nor
+    // SIMD-alignment is required, and the view is borrowed without conversion.
+    if (array.size() != 0 && array.data() == nullptr) {
+        throw py::value_error("A nonempty array must have a data buffer");
+    }
     return array;
 }
 
@@ -48,39 +55,48 @@ void check_shape(const py::array& array, const Shape& expected) {
     }
 }
 
+std::shared_ptr<CompiledKernel> compile_code(const Graph& graph, std::size_t input_count,
+                                             std::string_view target, bool fusion) {
+    return std::make_shared<CompiledKernel>(graph, input_count, kernel_mode(target),
+        fusion ? FusionMode::enabled : FusionMode::disabled);
+}
+
 class PythonKernel {
 public:
     PythonKernel(const Graph& graph, std::size_t input_count, std::string_view target, bool fusion)
-        : kernel_(graph, input_count, kernel_mode(target),
-                  fusion ? FusionMode::enabled : FusionMode::disabled), workspace_(kernel_.make_workspace()) {}
+        : PythonKernel(compile_code(graph, input_count, target, fusion)) {}
+
+    explicit PythonKernel(std::shared_ptr<CompiledKernel> code)
+        : code_(std::move(code)), output_shape_(code_->output_shape().begin(), code_->output_shape().end()),
+          inputs_(code_->input_shapes().size()) {}
 
     py::array operator()(const py::args& arguments) {
-        std::vector<py::ssize_t> shape(kernel_.output_shape().begin(), kernel_.output_shape().end());
-        py::array_t<float> output(shape);
-        execute(output, arguments);
+        bind_inputs(arguments);
+        py::array_t<float> output(output_shape_);
+        execute(output);
         return output;
     }
 
-    void run_into(py::handle output, const py::args& arguments) {
-        execute(checked_array(output), arguments);
-    }
-
-    const KernelInfo& info() const { return kernel_.info(); }
-    const detail::KernelPlan& plan() const { return kernel_.plan(); }
-    py::bytes object() const { return py::bytes(kernel_.object()); }
-
-private:
-    void execute(py::array output, const py::args& arguments) {
-        const auto& shapes = kernel_.input_shapes();
-        if (arguments.size() != shapes.size()) {
-            throw py::type_error("Incorrect number of kernel input arrays");
-        }
-        check_shape(output, kernel_.output_shape());
+    void run_into(py::handle destination, const py::args& arguments) {
+        auto output = checked_array(destination);
+        check_shape(output, code_->output_shape());
         if (!output.writeable()) {
             throw py::value_error("Kernel output must be writable");
         }
-        std::vector<InputBuffer> inputs;
-        inputs.reserve(arguments.size());
+        bind_inputs(arguments);
+        execute(output);
+    }
+
+    const KernelInfo& info() const { return code_->info(); }
+    const detail::KernelPlan& plan() const { return code_->plan(); }
+    py::bytes object() const { return py::bytes(code_->object()); }
+
+private:
+    void bind_inputs(const py::args& arguments) {
+        const auto& shapes = code_->input_shapes();
+        if (arguments.size() != shapes.size()) {
+            throw py::type_error("Incorrect number of kernel input arrays");
+        }
         for (std::size_t index = 0; index < arguments.size(); ++index) {
             auto array = checked_array(arguments[index]);
             if (array.ndim() == 0) {
@@ -89,18 +105,25 @@ private:
             if (shapes[index]) {
                 check_shape(array, *shapes[index]);
             }
-            inputs.emplace_back(static_cast<const std::byte*>(array.data()), array.nbytes());
+            inputs_[index] = {static_cast<const std::byte*>(array.data()),
+                              static_cast<std::size_t>(array.nbytes())};
         }
-
-        // The Python arguments and output own these buffers throughout the synchronous call.
-        kernel_.run(inputs,
-                    {static_cast<std::byte*>(output.mutable_data()),
-                     static_cast<std::size_t>(output.nbytes())},
-                    workspace_);
     }
 
-    CompiledKernel kernel_;
-    Workspace workspace_;
+    void execute(py::array& output) {
+        if (!workspace_) {
+            workspace_.emplace(code_->make_workspace());
+        }
+        // The GIL serializes calls on one handle. The original Python arguments
+        // and output keep their storage alive across synchronous execution.
+        code_->run(inputs_, {static_cast<std::byte*>(output.mutable_data()),
+                             static_cast<std::size_t>(output.nbytes())}, *workspace_);
+    }
+
+    std::shared_ptr<CompiledKernel> code_;
+    std::vector<py::ssize_t> output_shape_;
+    std::vector<InputBuffer> inputs_;
+    std::optional<Workspace> workspace_;
 };
 
 } // namespace
@@ -118,8 +141,12 @@ void bind_jit(py::module_& module) {
         .def_readonly("info", &Assembly::info)
         .def_readonly("text", &Assembly::text);
 
+    py::class_<CompiledKernel, std::shared_ptr<CompiledKernel>>(module, "_CompiledCode");
+    module.def("_compile_code", &compile_code);
+
     py::class_<PythonKernel>(module, "CompiledKernel")
         .def(py::init<const Graph&, std::size_t, std::string_view, bool>())
+        .def(py::init<std::shared_ptr<CompiledKernel>>(), py::arg("code").none(false))
         .def("__call__", &PythonKernel::operator())
         .def("run_into", &PythonKernel::run_into, py::arg("output"))
         .def_property_readonly("info", &PythonKernel::info)

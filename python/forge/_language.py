@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import keyword
 import math
 import re
@@ -12,6 +12,7 @@ import struct
 import numpy as np
 
 from . import _forge_ir
+from ._cache import get_or_compile
 from ._forge_ir import Graph, GraphBuilder, Op, SourceLocation
 from ._reference import evaluate
 
@@ -119,9 +120,17 @@ class Program:
     inputs: tuple[str, ...]
     _instructions: tuple[_Instruction, ...]
     _output: int
+    _cache_graph: tuple = field(init=False, repr=False, compare=False)
 
-    def graph(self, *arrays: np.ndarray) -> Graph:
-        """Bind validated arrays to the native, shape-specialized tensor graph."""
+    def __post_init__(self):
+        # Source locations and input names affect diagnostics, while operand
+        # order, input indices and the exact literal bits affect code generation.
+        object.__setattr__(self, "_cache_graph", tuple(
+            (ins.op, ins.operands, struct.pack("!f", ins.payload) if ins.op == Op.LITERAL else ins.payload)
+            for ins in self._instructions
+        ))
+
+    def _shapes(self, arrays):
         if len(arrays) != len(self.inputs):
             raise TypeError(f"Expected {len(self.inputs)} input arrays, got {len(arrays)}")
         for name, array in zip(self.inputs, arrays, strict=True):
@@ -131,7 +140,9 @@ class Program:
                 raise ValueError(f"{name!r} must have rank one or two")
             if not array.flags.c_contiguous:
                 raise ValueError(f"{name!r} must be C-contiguous")
+        return tuple(array.shape for array in arrays)
 
+    def _bind(self, shapes) -> Graph:
         builder = GraphBuilder()
         node_ids = []
         for instruction in self._instructions:
@@ -140,7 +151,7 @@ class Program:
             operands = [node_ids[index] for index in instruction.operands]
             if op == Op.INPUT:
                 index = instruction.payload
-                node_id = builder.input(index, arrays[index].shape, location)
+                node_id = builder.input(index, shapes[index], location)
             elif op == Op.LITERAL:
                 node_id = builder.literal(instruction.payload, location)
             elif op == Op.SQRT:
@@ -154,6 +165,10 @@ class Program:
             node_ids.append(node_id)
         return builder.finish(node_ids[self._output])
 
+    def graph(self, *arrays: np.ndarray) -> Graph:
+        """Bind validated arrays to the native, shape-specialized tensor graph."""
+        return self._bind(self._shapes(arrays))
+
     def reference(self, *arrays: np.ndarray) -> np.ndarray:
         """Evaluate the typed graph using rounded float32 NumPy operations."""
         return evaluate(self.graph(*arrays), arrays)
@@ -162,11 +177,21 @@ class Program:
         """Describe the scheduled loops and intermediate arrays without invoking LLVM."""
         return _forge_ir.plan_kernel(self.graph(*example_arrays), len(self.inputs), fusion)
 
-    def jit(self, *example_arrays: np.ndarray, target: str = "scalar", fusion: bool = True):
-        """Compile a reusable native kernel for the example input shapes."""
+    def jit(self, *example_arrays: np.ndarray, target: str = "scalar", fusion: bool = True,
+            cache: bool = False):
+        """Compile a reusable native kernel, optionally sharing cached machine code."""
         if not hasattr(_forge_ir, "CompiledKernel"):
             raise RuntimeError("LLVM JIT support requires a build with FORGE_ENABLE_JIT=ON")
-        return _forge_ir.CompiledKernel(self.graph(*example_arrays), len(self.inputs), target, fusion)
+        shapes = self._shapes(example_arrays)
+        if not cache:
+            return _forge_ir.CompiledKernel(self._bind(shapes), len(self.inputs), target, fusion)
+        if not isinstance(target, str) or type(fusion) is not bool:
+            raise TypeError("A cached kernel requires a string target and boolean fusion mode")
+        key = (self._cache_graph, self._output, np.dtype(np.float32).str, shapes, target, fusion)
+        code = get_or_compile(key, lambda: _forge_ir._compile_code(
+            self._bind(shapes), len(self.inputs), target, fusion
+        ))
+        return _forge_ir.CompiledKernel(code)
 
     def emit_x86(self, *example_arrays: np.ndarray, target: str = "scalar", fusion: bool = True):
         """Inspect Linux x86-64 assembly without executing it."""
