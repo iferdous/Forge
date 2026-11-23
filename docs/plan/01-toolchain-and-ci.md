@@ -33,7 +33,7 @@ Ubuntu shell
 mkdir -p .local/tmp .local/cache
 export TMPDIR="$PWD/.local/tmp" XDG_CACHE_HOME="$PWD/.local/cache"
 cmake -DFORGE_LLVM_PLATFORM=linux-x64 -P cmake/ProvisionLLVM.cmake
-cmake --preset release "-DLLVM_DIR=$(cat .local/llvm-dir-linux-x64.txt)"
+cmake --preset release -DFORGE_BUILD_PYTHON=OFF "-DLLVM_DIR=$(cat .local/llvm-dir-linux-x64.txt)"
 cmake --build --preset release --parallel
 ctest --preset release --verbose
 ```
@@ -48,7 +48,7 @@ cmake -DFORGE_LLVM_PLATFORM=windows-x64 -P cmake/ProvisionLLVM.cmake
 $llvmDir = Get-Content .local/llvm-dir-windows-x64.txt
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-cmake --preset release "-DLLVM_DIR=$llvmDir" -A x64 `
+cmake --preset release -DFORGE_BUILD_PYTHON=OFF "-DLLVM_DIR=$llvmDir" -A x64 `
   "-DMSVC_DIA_SDK_DIR=$vs/DIA SDK" `
   "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
   -DVCPKG_TARGET_TRIPLET=x64-windows-static
@@ -56,7 +56,7 @@ cmake --build --preset release --parallel
 ctest --preset release --verbose
 ```
 
-The hosted build uses Release to match the prebuilt SDK. The Debug presets require an SDK compatible with that platform's debug configuration. The Stage 01 build consists of LLVM 23.1.6 and GoogleTest 1.17.0. Python and the benchmark dependencies enter with the first stages that exercise them.
+The hosted build uses Release to match the prebuilt SDK. The Debug presets require an SDK compatible with that platform's debug configuration. These commands reproduce the Stage 01 C++ build of LLVM 23.1.6 and GoogleTest 1.17.0. The full CI workflow also builds and exercises the Stage 02 Python frontend.
 
 ## SDK compatibility findings
 
