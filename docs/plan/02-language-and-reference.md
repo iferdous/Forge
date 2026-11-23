@@ -57,3 +57,5 @@ The graph lists operations, shapes, source locations, and use counts. Change the
 ## Exit evidence
 
 A short language spec, fixture-based graph dumps, and passing reference tests on both CI platforms. The same expression and shapes yield the same typed graph and reference results before and after wiring the parser to C++.
+
+The M3 frontend passed all four C++ graph tests and ten Python tests with Apple Clang 16, Python 3.13.7, pybind11 3.1.0, and NumPy 2.5.5. The [Ubuntu and Windows CI workflow](../../.github/workflows/ci.yml) runs those checks alongside the Stage 01 LLJIT smoke test.

@@ -35,6 +35,6 @@ LLVM supplies instruction selection, vectorization, and in-process linking. Forg
 
 ## Development status
 
-[Step 01](docs/plan/01-toolchain-and-ci.md) passed on Ubuntu and Windows x64. Both runners built with LLVM 23.1.6 and executed a generated scalar function through LLJIT. [Step 02](docs/plan/02-language-and-reference.md) defines the expression language and reference behavior. Apple Silicon is useful for development and cross-emitting assembly. A qualified native x86-64 host provides release execution and timing evidence.
+[Step 02](docs/plan/02-language-and-reference.md) adds the Python expression frontend, a typed C++ graph, and the NumPy reference evaluator. [Try the frontend on Apple Silicon](docs/plan/02-language-and-reference.md#try-the-frontend-on-the-m3) to enter an expression and inspect its graph. [Step 03](docs/plan/03-scalar-jit.md) lowers the graph to LLVM and calls the generated scalar kernel. The Ubuntu and Windows x64 CI jobs also run the LLVM 23.1.6 smoke test from Step 01.
 
 The HRT engineering write-up inspired Forge's focus on measuring repeated overhead and intermediate data movement. Forge applies that idea to arithmetic on arrays already in memory. [HRT intern projects](https://www.hudsonrivertrading.com/hrtbeat/intern-spotlight-software-engineering-summer-projects/)
