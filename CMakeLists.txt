@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(Forge LANGUAGES CXX)
+project(Forge LANGUAGES C CXX)
 
 option(FORGE_ENABLE_JIT "Build with the pinned LLVM SDK" ON)
 option(FORGE_BUILD_PYTHON "Build the Python frontend" ON)
@@ -33,7 +33,12 @@ set_target_properties(forge_graph PROPERTIES POSITION_INDEPENDENT_CODE ON)
 forge_target_defaults(forge_graph)
 
 if(FORGE_ENABLE_JIT)
-    llvm_map_components_to_libnames(llvm_libraries Core OrcJIT Passes native X86)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET LLVM AND LLVM_DYLIB_COMPONENTS STREQUAL "all")
+        # The SDK's shared library avoids passing non-PIC system archives to Python's module link.
+        set(llvm_libraries LLVM)
+    else()
+        llvm_map_components_to_libnames(llvm_libraries Core OrcJIT Passes native X86)
+    endif()
     separate_arguments(llvm_definitions NATIVE_COMMAND "${LLVM_DEFINITIONS}")
     add_library(forge_llvm INTERFACE)
     target_include_directories(forge_llvm SYSTEM INTERFACE ${LLVM_INCLUDE_DIRS})
