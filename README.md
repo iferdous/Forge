@@ -35,6 +35,6 @@ LLVM supplies instruction selection, vectorization, and in-process linking. Forg
 
 ## Development status
 
-The plan is ready. Step 01 is next. The target build matrix is Ubuntu x64 and Windows x64. Apple Silicon is useful for development and cross-emitting assembly. A qualified native x86-64 host provides release execution and timing evidence.
+[Step 01](docs/plan/01-toolchain-and-ci.md) passed on Ubuntu and Windows x64. Both runners built with LLVM 23.1.6 and executed a generated scalar function through LLJIT. [Step 02](docs/plan/02-language-and-reference.md) defines the expression language and reference behavior. Apple Silicon is useful for development and cross-emitting assembly. A qualified native x86-64 host provides release execution and timing evidence.
 
 The HRT engineering write-up inspired Forge's focus on measuring repeated overhead and intermediate data movement. Forge applies that idea to arithmetic on arrays already in memory. [HRT intern projects](https://www.hudsonrivertrading.com/hrtbeat/intern-spotlight-software-engineering-summer-projects/)
