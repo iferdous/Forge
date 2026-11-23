@@ -13,9 +13,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/TargetParser/Host.h>
 
-#include <algorithm>
 #include <cstdint>
-#include <limits>
 #include <mutex>
 #include <stdexcept>
 #include <utility>
@@ -149,17 +147,6 @@ KernelInfo inspect(llvm::Module& module, const llvm::TargetMachine& machine,
     return info;
 }
 
-std::size_t elements(const Shape& shape) {
-    if (std::ranges::find(shape, 0) != shape.end()) {
-        return 0;
-    }
-    std::size_t count = 1;
-    for (const auto extent : shape) {
-        count *= extent;  // Graph construction already checked array byte-size overflow.
-    }
-    return count;
-}
-
 bool overlaps(InputBuffer input, OutputBuffer output) {
     if (input.empty() || output.empty()) {
         return false;
@@ -178,7 +165,8 @@ bool host_has_avx2() {
 
 struct CompiledKernel::Impl {
     detail::KernelPlan plan;
-    std::size_t count = 0;
+    std::vector<std::size_t> input_bytes;
+    std::vector<std::size_t> scratch_offsets;
     std::size_t scratch_elements = 0;
     KernelInfo info;
     std::string object;
@@ -197,13 +185,18 @@ CompiledKernel::CompiledKernel(const Graph& graph, std::size_t input_count, Kern
     }
     initialize_targets();
     impl_->plan = detail::plan_kernel(graph, input_count, fusion);
-    impl_->count = elements(impl_->plan.output_shape);
-    const auto scratch_slots = impl_->plan.slot_count - 1;
-    if (scratch_slots != 0 &&
-        impl_->count > std::numeric_limits<std::size_t>::max() / scratch_slots) {
-        throw std::overflow_error("Kernel workspace exceeds the platform limit");
+    impl_->input_bytes.reserve(input_count);
+    for (const auto& shape : impl_->plan.input_shapes) {
+        impl_->input_bytes.push_back(shape ? element_count(*shape) * sizeof(float) : 0);
     }
-    impl_->scratch_elements = impl_->count * scratch_slots;
+    for (std::size_t slot = 1; slot < impl_->plan.slot_elements.size(); ++slot) {
+        const auto size = impl_->plan.slot_elements[slot];
+        if (size > std::vector<float>().max_size() - impl_->scratch_elements) {
+            throw std::overflow_error("Kernel workspace exceeds the platform limit");
+        }
+        impl_->scratch_offsets.push_back(impl_->scratch_elements);
+        impl_->scratch_elements += size;
+    }
 
     auto target = target_builder(llvm::Triple(llvm::sys::getProcessTriple()), mode);
     auto machine = require(target.createTargetMachine(), "Creating the native target machine");
@@ -238,17 +231,18 @@ const detail::KernelPlan& CompiledKernel::plan() const { return impl_->plan; }
 const std::string& CompiledKernel::object() const { return impl_->object; }
 
 Workspace CompiledKernel::make_workspace() const {
-    return Workspace(input_shapes().size(), impl_->plan.slot_count, impl_->scratch_elements);
+    return Workspace(input_shapes().size(), impl_->plan.slot_elements.size(), impl_->scratch_elements);
 }
 
 void CompiledKernel::run(std::span<const InputBuffer> inputs, OutputBuffer output,
                          Workspace& workspace) const {
-    const auto bytes = impl_->count * sizeof(float);
+    const auto count = impl_->plan.slot_elements.front();
+    const auto bytes = count * sizeof(float);
     if (output.size() != bytes || inputs.size() != input_shapes().size()) {
         throw std::invalid_argument("Kernel buffer sizes or argument count do not match");
     }
     if (workspace.inputs_.size() != inputs.size() ||
-        workspace.buffers_.size() != impl_->plan.slot_count ||
+        workspace.buffers_.size() != impl_->plan.slot_elements.size() ||
         workspace.scratch_.size() != impl_->scratch_elements) {
         throw std::invalid_argument("Workspace does not match the compiled kernel");
     }
@@ -256,7 +250,7 @@ void CompiledKernel::run(std::span<const InputBuffer> inputs, OutputBuffer outpu
         if (!input_shapes()[index]) {
             continue;
         }
-        if (inputs[index].size() != bytes) {
+        if (inputs[index].size() != impl_->input_bytes[index]) {
             throw std::invalid_argument("Kernel input size does not match the compiled shape");
         }
         if (overlaps(inputs[index], output)) {
@@ -264,14 +258,16 @@ void CompiledKernel::run(std::span<const InputBuffer> inputs, OutputBuffer outpu
         }
         workspace.inputs_[index] = inputs[index].data();
     }
-    if (impl_->count == 0) {
+    if (count == 0) {
         return;
     }
     workspace.buffers_[0] = output.data();
-    for (std::size_t slot = 1; slot < workspace.buffers_.size(); ++slot) {
-        workspace.buffers_[slot] = workspace.scratch_.data() + (slot - 1) * impl_->count;
+    for (std::size_t index = 0; index < impl_->scratch_offsets.size(); ++index) {
+        const auto offset = impl_->scratch_offsets[index];
+        auto* base = workspace.scratch_.data();
+        workspace.buffers_[index + 1] = offset == 0 ? base : base + offset;
     }
-    impl_->entry(impl_->count, workspace.inputs_.data(), workspace.buffers_.data());
+    impl_->entry(count, workspace.inputs_.data(), workspace.buffers_.data());
 }
 
 Assembly emit_x86_linux(const Graph& graph, std::size_t input_count, KernelMode mode,

@@ -22,11 +22,11 @@ struct KernelPlan {
     std::vector<std::optional<Shape>> input_shapes;
     Shape output_shape;
     std::vector<LoopRegion> regions;
-    std::size_t slot_count = 1;  // Slot zero is the caller's output.
+    std::vector<std::size_t> slot_elements;  // Slot zero is the caller's output.
     std::string description;
 
     [[nodiscard]] std::size_t loop_count() const { return regions.size(); }
-    [[nodiscard]] std::size_t temporary_arrays() const { return slot_count - 1; }
+    [[nodiscard]] std::size_t temporary_arrays() const { return slot_elements.size() - 1; }
     [[nodiscard]] const std::string& dump() const { return description; }
 };
 

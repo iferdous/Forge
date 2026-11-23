@@ -31,8 +31,8 @@ py::array checked_array(py::handle value) {
     if (!array.dtype().equal(py::dtype::of<float>())) {
         throw py::type_error("Expected a native-endian float32 NumPy array");
     }
-    if (array.ndim() < 1 || array.ndim() > 2 || !(array.flags() & py::array::c_style)) {
-        throw py::value_error("Expected a C-contiguous array of rank one or two");
+    if (array.ndim() > 2 || !(array.flags() & py::array::c_style)) {
+        throw py::value_error("Expected a C-contiguous float32 buffer of rank at most two");
     }
     return array;
 }
@@ -83,6 +83,9 @@ private:
         inputs.reserve(arguments.size());
         for (std::size_t index = 0; index < arguments.size(); ++index) {
             auto array = checked_array(arguments[index]);
+            if (array.ndim() == 0) {
+                throw py::value_error("Expected a C-contiguous input array of rank one or two");
+            }
             if (shapes[index]) {
                 check_shape(array, *shapes[index]);
             }

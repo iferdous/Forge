@@ -186,5 +186,62 @@ class FusionJitTests(unittest.TestCase):
         self.assertNotIn("vfmadd", emitted.text)
 
 
+@unittest.skipUnless(hasattr(_forge_ir, "CompiledKernel"), "LLVM JIT is disabled")
+class AggregateJitTests(unittest.TestCase):
+    def assertFloat32BitsEqual(self, actual, expected):
+        self.assertEqual((actual.shape, actual.dtype), (expected.shape, np.dtype(np.float32)))
+        nan = np.isnan(expected)
+        np.testing.assert_array_equal(np.isnan(actual), nan)
+        np.testing.assert_array_equal(actual.view(np.uint32)[~nan], expected.view(np.uint32)[~nan])
+
+    def test_reductions_preserve_order_and_exceptional_values(self):
+        fixtures = (
+            np.array([[1e20, 1, -1e20], [3, 0, 0]], dtype=np.float32),
+            np.array([1, 2, np.nan, -5], dtype=np.float32),
+            np.array([-np.inf, np.inf], dtype=np.float32),
+            np.array([np.finfo(np.float32).max] * 2, dtype=np.float32),
+            np.array([1, 1, 0x80000000], dtype=np.uint32).view(np.float32),
+            np.array([-0.0, -0.0], dtype=np.float32),
+            np.array([0.0, -0.0], dtype=np.float32),
+            np.array([-0.0, 0.0], dtype=np.float32),
+            np.array([np.inf], dtype=np.float32),
+            np.empty((2, 0), dtype=np.float32),
+        )
+        targets = ("scalar", "avx2") if forge.has_avx2() else ("scalar",)
+        for name in ("sum", "max", "mean"):
+            program = forge.compile(f"{name}(x)", inputs=("x",))
+            for array in fixtures:
+                with self.subTest(name=name, values=array.tolist()):
+                    if name == "max" and not array.size:
+                        with self.assertRaisesRegex(ValueError, "nonempty"):
+                            program.jit(array)
+                        continue
+                    expected = program.reference(array)
+                    for target in targets:
+                        kernel = program.jit(array, target=target)
+                        actual = kernel(array)
+                        self.assertTrue(actual.flags.owndata)
+                        self.assertFloat32BitsEqual(actual, expected)
+                        out = np.empty((), dtype=np.float32)
+                        kernel.run_into(out, array)
+                        self.assertFloat32BitsEqual(out, expected)
+                        self.assertNotIn("<8 x float>", kernel.info.ir)
+                    with self.assertRaisesRegex(ValueError, "shape"):
+                        kernel.run_into(np.empty(1, dtype=np.float32), array)
+
+    def test_reductions_are_fusion_boundaries_and_broadcast_scalars(self):
+        x = np.arange(65, dtype=np.float32)
+        y = np.arange(9, dtype=np.float32)
+        program = forge.compile("sqrt(sum((x + 2) * 3)) + y", inputs=("x", "y"))
+        for fusion, loops, temporary_arrays in ((False, 4, 2), (True, 3, 1)):
+            kernel = program.jit(x, y, fusion=fusion)
+            self.assertEqual((kernel.plan.loop_count, kernel.plan.temporary_arrays),
+                             (loops, temporary_arrays))
+            self.assertFloat32BitsEqual(kernel(x, y), program.reference(x, y))
+        reduction = forge.compile("sum(x)", inputs=("x",)).jit(x)
+        with self.assertRaisesRegex(ValueError, "disjoint"):
+            reduction.run_into(x[:1].reshape(()), x)
+
+
 if __name__ == "__main__":
     unittest.main()
