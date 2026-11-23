@@ -46,13 +46,15 @@ print(program.graph(x).dump())
 
 The graph lists operations, shapes, source locations, and use counts. Change the expression and call `forge.compile` again to explore. This stage evaluates the NumPy reference. Stage 03 adds LLVM code generation.
 
-## Implemented expression contract
+## Stage 02 expression contract
 
 - Expressions use ASCII input names, signed numeric literals, `+`, `*`, parentheses, and `sqrt(expression)`. Multiplication binds more tightly than addition. A sign applies to a literal. The parser accepts up to 4,096 source characters, 32 levels of expression nesting, and 256 visited expression nodes.
 - Input names define positional order. Values are ordinary NumPy `ndarray` objects with native-endian `float32` dtype, rank one or two, and C-contiguous storage. Tensor operands must have equal shapes. Scalar expressions broadcast explicitly when combined with an array. An expression's output is an independently owned array.
 - Integer literals round directly to binary32 with ties to even. Floating literals first take the binary64 value parsed by Python, then round to binary32. Literals must stay finite. The default floating-point environment provides ties-to-even rounding and gradual underflow. Each operation rounds independently. Invalid square roots return NaN. Tests compare non-NaN bits and classify NaNs.
 - Repeated inputs and structurally identical subexpressions share graph nodes and keep their first source location. Ordered operands stay in source order. Array byte-size arithmetic is checked in C++, including shapes with zero-sized dimensions.
 - Syntax and unknown-name failures raise `SyntaxError`. Array or argument type failures raise `TypeError`. Shape, layout, and result-rank failures raise `ValueError`.
+
+Stage 06 extends this contract with full reductions, rank-zero results, and the `@` operator. [Aggregate expression contract](06-reductions-and-matmul.md#expression-and-numerical-contract)
 
 ## Exit evidence
 

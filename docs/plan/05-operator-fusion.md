@@ -22,7 +22,7 @@ python -m forge 'sqrt((a + b) * 3)' --array 'a=[1,2,3]' --array 'b=[2,3,4]'
 python -m forge
 ~~~
 
-The default sample has nine elements, so on an AVX2 host the demo covers one packed iteration and a scalar remainder. On the M3, the result comes from the native scalar JIT and the assembly comes from the Linux x86-64 cross emitter. Use `--inspect ir` to show optimized LLVM IR for the host kernel. The expression language supports `+`, `*`, and `sqrt()` with float32 scalars and equal-shape rank-one or rank-two arrays.
+The default sample has nine elements, so on an AVX2 host the demo covers one packed iteration and a scalar remainder. On the M3, the result comes from the native scalar JIT and the assembly comes from the Linux x86-64 cross emitter. Use `--inspect ir` to show optimized LLVM IR for the host kernel. The pointwise operators `+`, `*`, and `sqrt()` support float32 scalars and equal-shape rank-one or rank-two arrays. The same playground also accepts the [Stage 06 reductions and matrix operator](06-reductions-and-matmul.md#expression-and-numerical-contract).
 
 The Python API exposes `program.plan(x)` without requiring LLVM and `program.jit(x, fusion=False)` for the unfused control. Forge counts uses among live operations. For example, `(x + 2) * (x + 2)` feeds one addition into both operands of the multiply and retains one intermediate array. Inside a fused loop, values stay in SSA form until the final store. The lowering preserves operation order and separate float32 rounding without fast math or FMA.
 

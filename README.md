@@ -6,7 +6,8 @@ Forge is a small tensor compiler for CPU kernels. It uses C++20 and LLVM ORC LLJ
 | --- | --- |
 | Three-op demo, 65,536 float32 elements, native AVX2 | Ubuntu 23.25 → 12.83 µs and Windows 25.81 → 14.31 µs with fusion (~1.8× on both) |
 | Benchmark scope | Warm medians on shared CI, with preallocated buffers and compilation excluded |
-| Full comparison | [Timings and method](docs/plan/05-operator-fusion.md#verified-results) · [Raw samples and JIT disassembly](https://github.com/iferdous/Forge/actions/runs/45102680498) |
+| Fusion comparison | [Timings and method](docs/plan/05-operator-fusion.md#verified-results) · [Raw samples and JIT disassembly](https://github.com/iferdous/Forge/actions/runs/45102680498) |
+| Reductions and matmul | [Numerical checks and single-thread NumPy comparison](docs/plan/06-reductions-and-matmul.md#verified-results) |
 
 ## What Forge compiles
 
@@ -18,7 +19,7 @@ Python expression → validated AST → typed tensor IR → kernel plan
                           NumPy result ← tests ← LLVM IR → LLJIT → output array
 ~~~
 
-LLVM supplies instruction selection, vectorization, and in-process linking. Forge owns the language, shape rules, kernel planning, fusion legality, and the experiments that isolate each optimization. The full scope includes sum, max, mean, and tiled matrix multiplication.
+LLVM supplies instruction selection, vectorization, and in-process linking. Forge owns the language, shape rules, kernel planning, fusion legality, and the experiments that isolate each optimization. Forge also compiles full-array `sum`, `max`, and `mean` and tiled rank-two matrix multiplication.
 
 ## Implementation plan
 
@@ -37,10 +38,11 @@ LLVM supplies instruction selection, vectorization, and in-process linking. Forg
 
 ## Development status
 
-[Step 05](docs/plan/05-operator-fusion.md) adds operator fusion and the terminal playground. After [building with LLVM](docs/plan/05-operator-fusion.md#try-an-expression), run the demo or omit the expression to open the interactive prompt. On Apple Silicon the playground runs the native scalar kernel and can show generated x86-64 assembly.
+The terminal playground runs both plans and checks their results against the reference. Omit the expression to open the interactive prompt. On Apple Silicon the playground executes the scalar kernel and can show generated x86-64 assembly. [Build and run Forge](docs/plan/05-operator-fusion.md#try-an-expression)
 
 ~~~sh
 python -m forge 'sqrt((x + 2) * 3)'
+python -m forge 'mean((x + 2) * 3)'
 ~~~
 
 The HRT engineering write-up inspired Forge's focus on measuring repeated overhead and intermediate data movement. Forge applies that idea to arithmetic on arrays already in memory. [HRT intern projects](https://www.hudsonrivertrading.com/hrtbeat/intern-spotlight-software-engineering-summer-projects/)
