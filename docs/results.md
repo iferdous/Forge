@@ -38,6 +38,8 @@ The streaming case starts with 512 MiB of input plus output before intermediates
 
 Both runners favored NumPy for the 1,048,576-element ordered sum. Ubuntu measured 552.12 µs for Forge versus 178.24 µs for NumPy. Windows measured 1,002.60 µs versus 356.78 µs. Forge preserves left-to-right accumulation, which constrains reassociation and vectorization. NumPy has its own accumulation strategy. [Reduction contract and accuracy checks](plan/06-reductions-and-matmul.md)
 
+The largest allocating gains in the grid came from the 32-element mean, **9.55× on Ubuntu and 8.88× on Windows**. The largest losses on each host came from max. Ubuntu measured 165.48 µs for Forge versus 3.80 µs for NumPy at 65,536 elements (**43.52× in NumPy’s favor**). Windows measured 1,012.95 µs versus 65.68 µs at 1,048,576 elements (**15.42× in NumPy’s favor**). Forge lowers max to an ordered loop using LLVM’s NaN-propagating maximum operation. The kernel measurements show where the gap occurs. They leave the exact microarchitectural causes unmeasured. [Reduction lowering](../src/llvm_lowering.cpp) · [Ubuntu and Windows measurements](https://iferdous.github.io/Forge/#benchmarks)
+
 For the 512 × 512 × 512 matrix product, allocating calls took 10.60 ms for Forge and 1.44 ms for NumPy on Ubuntu, and 17.84 ms and 3.24 ms on Windows. Forge vectorizes independent columns inside a tiled loop. NumPy delegates the multiplication to a tuned one-thread OpenBLAS runtime. [Benchmark cases and comparison rules](plan/07-python-runtime-and-benchmarks.md#timing-and-evidence-protocol)
 
 ## First use and compiled handles
