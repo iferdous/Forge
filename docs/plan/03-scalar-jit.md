@@ -24,10 +24,10 @@ import numpy as np
 
 x = np.array([1, 10, 25, 46], dtype=np.float32)
 program = forge.compile("sqrt((x + 2) * 3)", inputs=("x",))
-kernel = program.jit(x, target="scalar")
+kernel = program.jit(x, target="scalar", fusion=False)
 print(kernel(x).tolist())  # [3.0, 6.0, 9.0, 12.0]
 print(kernel.info.ir)
-print(program.emit_x86(x).text)
+print(program.emit_x86(x, fusion=False).text)
 ~~~
 
 The entry point receives the element count and separate input and output pointer tables. Each tensor operation writes its result through a separate loop. Literal broadcasts are scalar parameters, and intermediate arrays occupy a reusable workspace. Outputs own their storage by default. `run_into` accepts a writable, correctly shaped output disjoint from the inputs. The LLVM module is verified before and after optimization, and the kernel keeps the LLJIT owner alive for every call.

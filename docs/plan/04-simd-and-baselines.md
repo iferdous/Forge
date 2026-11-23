@@ -22,9 +22,9 @@
 Use the same `program` and `x` as the [scalar example](03-scalar-jit.md#run-and-inspect-the-scalar-kernel). The AVX2 option checks the current process architecture and LLVM's OS-aware AVX2 feature probe before compiling for native execution.
 
 ~~~python
-print(program.emit_x86(x, target="avx2").text)
+print(program.emit_x86(x, target="avx2", fusion=False).text)
 if forge.has_avx2():
-    kernel = program.jit(x, target="avx2")
+    kernel = program.jit(x, target="avx2", fusion=False)
     print(kernel(x).tolist())
     print("\n".join(kernel.info.remarks))
 ~~~
@@ -37,7 +37,7 @@ CI enables `FORGE_BUILD_BENCHMARKS` with Google Benchmark 1.10.0 and uploads one
 
 The native benchmark compares preallocated scalar and AVX2 calls for `x + 2` and the three-operation demo. The Python harness compares `x + 2` across Forge and NumPy for both allocating and preallocated APIs. Both harnesses use wall-clock timing. The native harness also records CPU-time fields for inspection. Compilation, fixture generation, and warmup are outside the recorded samples. Python percentiles can be derived from the raw batch means. Durations from shared CI are smoke measurements. The release benchmark will use qualified timing hardware.
 
-The [CI workflow](../../.github/workflows/ci.yml) shows the exact commands for the native and Python harnesses and the disassembly check.
+The [Stage 04 workflow](https://github.com/iferdous/Forge/blob/dd421e3/.github/workflows/ci.yml) shows the exact commands used for this baseline and its disassembly check.
 
 ## Exit evidence
 

@@ -4,12 +4,13 @@ Forge is a small tensor compiler for CPU kernels. It uses C++20 and LLVM ORC LLJ
 
 | Benchmark evidence | Status |
 | --- | --- |
-| Unfused three-op demo, 65,536 float32 elements | 100.1 µs scalar, 13.4 µs AVX2 median wall time on one Ubuntu CI runner |
-| Native and NumPy baselines | [Raw samples and JIT disassembly](https://github.com/iferdous/Forge/actions/runs/45101169543) |
+| Three-op demo, 65,536 float32 elements, native AVX2 | Ubuntu 23.25 → 12.83 µs and Windows 25.81 → 14.31 µs with fusion (~1.8× on both) |
+| Benchmark scope | Warm medians on shared CI, with preallocated buffers and compilation excluded |
+| Full comparison | [Timings and method](docs/plan/05-operator-fusion.md#verified-results) · [Raw samples and JIT disassembly](https://github.com/iferdous/Forge/actions/runs/45102680498) |
 
 ## What Forge compiles
 
-The first complete workload is `sqrt((x + 2) * 3)` on a contiguous `float32` array. Forge validates the expression, represents it as a graph of tensor operations, and lowers each operation to a loop. The AVX2 path runs eight single-precision lanes at a time and uses a scalar tail for the remaining elements. The next milestone combines the three loops into one.
+The first complete workload is `sqrt((x + 2) * 3)` on a contiguous `float32` array. Forge validates the expression, represents it as a graph of tensor operations, and fuses eligible operations into one loop. The example keeps the intermediate values in registers and writes only the result array. The AVX2 path runs eight single-precision lanes at a time and uses a scalar tail for the remaining elements.
 
 ~~~text
 Python expression → validated AST → typed tensor IR → kernel plan
@@ -36,6 +37,10 @@ LLVM supplies instruction selection, vectorization, and in-process linking. Forg
 
 ## Development status
 
-[Step 03](docs/plan/03-scalar-jit.md) added the scalar JIT. [Step 04](docs/plan/04-simd-and-baselines.md) added native AVX2 and the benchmark harness. On Apple Silicon you can run the scalar kernel and [inspect the cross-emitted x86 assembly](docs/plan/04-simd-and-baselines.md#run-and-inspect-the-avx2-kernel). The timing above is a CI smoke measurement for the native call boundary. [Step 05](docs/plan/05-operator-fusion.md) adds operator fusion.
+[Step 05](docs/plan/05-operator-fusion.md) adds operator fusion and the terminal playground. After [building with LLVM](docs/plan/05-operator-fusion.md#try-an-expression), run the demo or omit the expression to open the interactive prompt. On Apple Silicon the playground runs the native scalar kernel and can show generated x86-64 assembly.
+
+~~~sh
+python -m forge 'sqrt((x + 2) * 3)'
+~~~
 
 The HRT engineering write-up inspired Forge's focus on measuring repeated overhead and intermediate data movement. Forge applies that idea to arithmetic on arrays already in memory. [HRT intern projects](https://www.hudsonrivertrading.com/hrtbeat/intern-spotlight-software-engineering-summer-projects/)
