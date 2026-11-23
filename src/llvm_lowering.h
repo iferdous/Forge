@@ -19,6 +19,6 @@ struct KernelPlan {
 };
 
 [[nodiscard]] KernelPlan plan_kernel(const Graph& graph, std::size_t input_count);
-void lower_kernel(llvm::Module& module, const Graph& graph, const KernelPlan& plan);
+void lower_kernel(llvm::Module& module, const Graph& graph, const KernelPlan& plan, bool simd);
 
 } // namespace forge::detail

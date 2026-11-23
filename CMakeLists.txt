@@ -4,6 +4,7 @@ project(Forge LANGUAGES C CXX)
 
 option(FORGE_ENABLE_JIT "Build with the pinned LLVM SDK" ON)
 option(FORGE_BUILD_PYTHON "Build the Python frontend" ON)
+option(FORGE_BUILD_BENCHMARKS "Build the native benchmark harness" OFF)
 
 if(FORGE_ENABLE_JIT)
     if(WIN32)
@@ -54,6 +55,26 @@ if(FORGE_ENABLE_JIT)
     forge_target_defaults(forge_jit)
 endif()
 
+if(FORGE_BUILD_BENCHMARKS)
+    if(NOT FORGE_ENABLE_JIT)
+        message(FATAL_ERROR "Native benchmarks require FORGE_ENABLE_JIT=ON")
+    endif()
+    include(FetchContent)
+    set(BENCHMARK_ENABLE_TESTING OFF)
+    set(BENCHMARK_ENABLE_INSTALL OFF)
+    FetchContent_Declare(
+        benchmark
+        URL https://codeload.github.com/google/benchmark/tar.gz/refs/tags/v1.10.0
+        URL_HASH SHA256=acc5c7c0fbed855c4aaa2d7c3c36fb82b0c15c28f4e151e3f679c2fc0aa404af
+    )
+    FetchContent_MakeAvailable(benchmark)
+    add_executable(forge_native_bench bench/native.cpp)
+    target_link_libraries(forge_native_bench PRIVATE forge_jit benchmark::benchmark)
+    set_target_properties(forge_native_bench PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_CURRENT_BINARY_DIR}/bench>")
+    forge_target_defaults(forge_native_bench)
+endif()
+
 if(FORGE_BUILD_PYTHON)
     include(FetchContent)
     find_package(Python 3.12 REQUIRED COMPONENTS Interpreter Development.Module)
@@ -69,7 +90,6 @@ if(FORGE_BUILD_PYTHON)
         configure_file("python/forge/${source}" "${forge_python_dir}/forge/${source}" COPYONLY)
     endforeach()
     pybind11_add_module(_forge_ir MODULE NO_EXTRAS python/bindings.cpp)
-    target_link_libraries(_forge_ir PRIVATE forge_graph)
     set_target_properties(_forge_ir PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY "$<1:${forge_python_dir}/forge>"
         RUNTIME_OUTPUT_DIRECTORY "$<1:${forge_python_dir}/forge>"
@@ -79,6 +99,8 @@ if(FORGE_BUILD_PYTHON)
         target_sources(_forge_ir PRIVATE python/jit_bindings.cpp)
         target_compile_definitions(_forge_ir PRIVATE FORGE_ENABLE_JIT)
         target_link_libraries(_forge_ir PRIVATE forge_jit)
+    else()
+        target_link_libraries(_forge_ir PRIVATE forge_graph)
     endif()
 endif()
 
@@ -118,7 +140,7 @@ if(BUILD_TESTING)
         forge_target_defaults(forge_jit_smoke)
         gtest_discover_tests(forge_jit_smoke)
 
-        add_executable(forge_jit_tests tests/jit_test.cpp)
+        add_executable(forge_jit_tests tests/jit_test.cpp tests/simd_test.cpp)
         target_link_libraries(forge_jit_tests PRIVATE GTest::gtest_main forge_jit)
         forge_target_defaults(forge_jit_tests)
         gtest_discover_tests(forge_jit_tests)

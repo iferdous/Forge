@@ -4,6 +4,9 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/ExecutionEngine/Orc/ObjectTransformLayer.h>
+#include <llvm/IR/DiagnosticHandler.h>
+#include <llvm/IR/DiagnosticInfo.h>
+#include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Passes/PassBuilder.h>
@@ -52,11 +55,12 @@ void check(llvm::Error error, const char* action) {
     }
 }
 
-llvm::orc::JITTargetMachineBuilder target_builder(llvm::Triple triple) {
+llvm::orc::JITTargetMachineBuilder target_builder(llvm::Triple triple, KernelMode mode) {
     llvm::orc::JITTargetMachineBuilder target(triple);
     target.setCPU(triple.isX86() ? "x86-64" : "generic");
     if (triple.isX86()) {
-        target.setFeatures("-avx,-avx2,-fma");
+        target.setFeatures(mode == KernelMode::avx2
+                           ? "+avx,+avx2,-avx512f,-fma" : "-avx,-avx2,-fma");
     }
     target.getOptions().AllowFPOpFusion = llvm::FPOpFusion::Strict;
     return target;
@@ -70,16 +74,51 @@ void verify(llvm::Module& module) {
     }
 }
 
+class VectorizationDiagnostics final : public llvm::DiagnosticHandler {
+public:
+    bool isAnyRemarkEnabled() const override { return true; }
+    bool isPassedOptRemarkEnabled(llvm::StringRef pass) const override {
+        return pass == "loop-vectorize";
+    }
+    bool isMissedOptRemarkEnabled(llvm::StringRef pass) const override {
+        return pass == "loop-vectorize";
+    }
+    bool handleDiagnostics(const llvm::DiagnosticInfo& diagnostic) override {
+        const auto* remark = llvm::dyn_cast<llvm::DiagnosticInfoOptimizationBase>(&diagnostic);
+        if (!remark || remark->getPassName() != "loop-vectorize") {
+            return false;
+        }
+
+        std::string message;
+        llvm::raw_string_ostream stream(message);
+        stream << remark->getFunction().getName() << ' ' << remark->getRemarkName() << ": ";
+        llvm::DiagnosticPrinterRawOStream printer(stream);
+        remark->print(printer);
+        remarks.push_back(std::move(message));
+        return true;
+    }
+
+    std::vector<std::string> remarks;
+};
+
 std::unique_ptr<llvm::Module> build_module(const Graph& graph, const detail::KernelPlan& plan,
-                                           llvm::LLVMContext& context, llvm::TargetMachine& machine) {
+                                           llvm::LLVMContext& context, llvm::TargetMachine& machine,
+                                           KernelMode mode, std::vector<std::string>& remarks) {
     auto module = std::make_unique<llvm::Module>("forge", context);
     module->setTargetTriple(machine.getTargetTriple());
     module->setDataLayout(machine.createDataLayout());
-    detail::lower_kernel(*module, graph, plan);
+    const auto simd = mode == KernelMode::avx2;
+    detail::lower_kernel(*module, graph, plan, simd);
     verify(*module);
 
     llvm::PipelineTuningOptions tuning;
-    tuning.LoopVectorization = false;
+    VectorizationDiagnostics* captured = nullptr;
+    if (simd) {
+        auto diagnostics = std::make_unique<VectorizationDiagnostics>();
+        captured = diagnostics.get();
+        context.setDiagnosticHandler(std::move(diagnostics), /*RespectFilters=*/true);
+    }
+    tuning.LoopVectorization = simd;
     tuning.SLPVectorization = false;
     tuning.LoopUnrolling = false;
     llvm::PassBuilder builder(&machine, tuning);
@@ -94,12 +133,17 @@ std::unique_ptr<llvm::Module> build_module(const Graph& graph, const detail::Ker
     builder.crossRegisterProxies(loops, functions, sccs, modules);
     builder.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O2).run(*module, modules);
     verify(*module);
+    if (captured) {
+        remarks = std::move(captured->remarks);
+    }
     return module;
 }
 
-KernelInfo inspect(llvm::Module& module, const llvm::TargetMachine& machine) {
+KernelInfo inspect(llvm::Module& module, const llvm::TargetMachine& machine,
+                   std::vector<std::string> remarks) {
     KernelInfo info{module.getTargetTriple().str(), module.getDataLayoutStr(),
-                    machine.getTargetCPU().str(), machine.getTargetFeatureString().str(), {}};
+                    machine.getTargetCPU().str(), machine.getTargetFeatureString().str(),
+                    {}, std::move(remarks)};
     llvm::raw_string_ostream stream(info.ir);
     module.print(stream, nullptr);
     return info;
@@ -127,6 +171,11 @@ bool overlaps(InputBuffer input, OutputBuffer output) {
 
 } // namespace
 
+bool host_has_avx2() {
+    return llvm::Triple(llvm::sys::getProcessTriple()).getArch() == llvm::Triple::x86_64 &&
+           llvm::sys::getHostCPUFeatures().lookup("avx2");
+}
+
 struct CompiledKernel::Impl {
     detail::KernelPlan plan;
     std::size_t count = 0;
@@ -140,8 +189,11 @@ struct CompiledKernel::Impl {
 Workspace::Workspace(std::size_t inputs, std::size_t slots, std::size_t scratch_elements)
     : scratch_(scratch_elements), inputs_(inputs), buffers_(slots) {}
 
-CompiledKernel::CompiledKernel(const Graph& graph, std::size_t input_count)
+CompiledKernel::CompiledKernel(const Graph& graph, std::size_t input_count, KernelMode mode)
     : impl_(std::make_unique<Impl>()) {
+    if (mode == KernelMode::avx2 && !host_has_avx2()) {
+        throw std::invalid_argument("Native AVX2 requires an x86-64 process with usable AVX2");
+    }
     initialize_targets();
     impl_->plan = detail::plan_kernel(graph, input_count);
     impl_->count = elements(impl_->plan.output_shape);
@@ -152,11 +204,12 @@ CompiledKernel::CompiledKernel(const Graph& graph, std::size_t input_count)
     }
     impl_->scratch_elements = impl_->count * scratch_slots;
 
-    auto target = target_builder(llvm::Triple(llvm::sys::getProcessTriple()));
+    auto target = target_builder(llvm::Triple(llvm::sys::getProcessTriple()), mode);
     auto machine = require(target.createTargetMachine(), "Creating the native target machine");
     auto context = std::make_unique<llvm::LLVMContext>();
-    auto module = build_module(graph, impl_->plan, *context, *machine);
-    impl_->info = inspect(*module, *machine);
+    std::vector<std::string> remarks;
+    auto module = build_module(graph, impl_->plan, *context, *machine, mode, remarks);
+    impl_->info = inspect(*module, *machine, std::move(remarks));
     impl_->jit = require(llvm::orc::LLJITBuilder().setJITTargetMachineBuilder(std::move(target))
             .setDataLayout(module->getDataLayout()).create(), "Creating LLJIT");
     impl_->jit->getObjTransformLayer().setTransform(
@@ -219,13 +272,15 @@ void CompiledKernel::run(std::span<const InputBuffer> inputs, OutputBuffer outpu
     impl_->entry(impl_->count, workspace.inputs_.data(), workspace.buffers_.data());
 }
 
-Assembly emit_x86_linux(const Graph& graph, std::size_t input_count) {
+Assembly emit_x86_linux(const Graph& graph, std::size_t input_count, KernelMode mode) {
     initialize_targets();
-    auto target = target_builder(llvm::Triple("x86_64-unknown-linux-gnu"));
+    auto target = target_builder(llvm::Triple("x86_64-unknown-linux-gnu"), mode);
     auto machine = require(target.createTargetMachine(), "Creating the Linux x86-64 target");
     llvm::LLVMContext context;
-    auto module = build_module(graph, detail::plan_kernel(graph, input_count), context, *machine);
-    auto info = inspect(*module, *machine);
+    std::vector<std::string> remarks;
+    auto module = build_module(graph, detail::plan_kernel(graph, input_count), context, *machine,
+                               mode, remarks);
+    auto info = inspect(*module, *machine, std::move(remarks));
     llvm::SmallVector<char> buffer;
     llvm::raw_svector_ostream stream(buffer);
     llvm::legacy::PassManager emitter;

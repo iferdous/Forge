@@ -2,9 +2,9 @@
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 
-#include <array>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -35,7 +35,7 @@ llvm::Value* emit_value(llvm::IRBuilder<>& builder, Op op,
 }
 
 llvm::Function* emit_loop(llvm::Module& module, Op op, NodeId id,
-                          llvm::ArrayRef<llvm::Value*> operands) {
+                          llvm::ArrayRef<llvm::Value*> operands, bool simd) {
     auto& context = module.getContext();
     llvm::IRBuilder<> builder(context);
     auto* index_type = builder.getInt64Ty();
@@ -83,7 +83,18 @@ llvm::Function* emit_loop(llvm::Module& module, Op op, NodeId id,
     builder.CreateAlignedStore(emit_value(builder, op, values), address, llvm::Align(1));
     auto* next = builder.CreateNUWAdd(index, builder.getInt64(1), "next");
     index->addIncoming(next, loop);
-    builder.CreateCondBr(builder.CreateICmpEQ(next, count), exit, loop);
+    auto* backedge = builder.CreateCondBr(builder.CreateICmpEQ(next, count), exit, loop);
+    if (simd) {
+        const auto hint = [&](const char* name, unsigned value) {
+            return llvm::MDNode::get(context, {llvm::MDString::get(context, name),
+                llvm::ConstantAsMetadata::get(builder.getInt32(value))});
+        };
+        // Request eight floats per vector and one vector per iteration.
+        auto* metadata = llvm::MDNode::getDistinct(context, {nullptr,
+            hint("llvm.loop.vectorize.width", 8), hint("llvm.loop.interleave.count", 1)});
+        metadata->replaceOperandWith(0, metadata);
+        backedge->setMetadata(llvm::LLVMContext::MD_loop, metadata);
+    }
     builder.SetInsertPoint(exit);
     builder.CreateRetVoid();
     return function;
@@ -130,7 +141,7 @@ KernelPlan plan_kernel(const Graph& graph, std::size_t input_count) {
     return plan;
 }
 
-void lower_kernel(llvm::Module& module, const Graph& graph, const KernelPlan& plan) {
+void lower_kernel(llvm::Module& module, const Graph& graph, const KernelPlan& plan, bool simd) {
     auto& context = module.getContext();
     llvm::IRBuilder<> builder(context);
     auto* ptr_type = builder.getPtrTy();
@@ -172,7 +183,7 @@ void lower_kernel(llvm::Module& module, const Graph& graph, const KernelPlan& pl
             if (node.shape.empty()) {
                 values[id] = emit_value(builder, node.op, operands);
             } else {
-                auto* loop = emit_loop(module, node.op, id, operands);
+                auto* loop = emit_loop(module, node.op, id, operands, simd);
                 auto* output = pointer_at(buffers, plan.slots[id]);
                 std::vector<llvm::Value*> args{output, count};
                 args.insert(args.end(), operands.begin(), operands.end());
@@ -185,7 +196,7 @@ void lower_kernel(llvm::Module& module, const Graph& graph, const KernelPlan& pl
     // Returning an input still gives the caller an independently owned array.
     if (nodes[graph.output()].op == Op::input) {
         auto* input = values[graph.output()];
-        auto* loop = emit_loop(module, Op::input, graph.output(), {input});
+        auto* loop = emit_loop(module, Op::input, graph.output(), {input}, simd);
         builder.CreateCall(loop, {pointer_at(buffers, 0), count, input});
     }
     builder.CreateRetVoid();

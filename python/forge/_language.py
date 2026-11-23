@@ -153,17 +153,17 @@ class Program:
         """Evaluate the typed graph using rounded float32 NumPy operations."""
         return evaluate(self.graph(*arrays), arrays)
 
-    def jit(self, *example_arrays: np.ndarray):
-        """Compile a reusable scalar kernel for the example input shapes."""
+    def jit(self, *example_arrays: np.ndarray, target: str = "scalar"):
+        """Compile a reusable native kernel for the example input shapes."""
         if not hasattr(_forge_ir, "CompiledKernel"):
             raise RuntimeError("LLVM JIT support requires a build with FORGE_ENABLE_JIT=ON")
-        return _forge_ir.CompiledKernel(self.graph(*example_arrays), len(self.inputs))
+        return _forge_ir.CompiledKernel(self.graph(*example_arrays), len(self.inputs), target)
 
-    def emit_x86(self, *example_arrays: np.ndarray):
+    def emit_x86(self, *example_arrays: np.ndarray, target: str = "scalar"):
         """Inspect Linux x86-64 assembly without executing it."""
         if not hasattr(_forge_ir, "emit_x86_linux"):
             raise RuntimeError("LLVM assembly emission requires a build with FORGE_ENABLE_JIT=ON")
-        return _forge_ir.emit_x86_linux(self.graph(*example_arrays), len(self.inputs))
+        return _forge_ir.emit_x86_linux(self.graph(*example_arrays), len(self.inputs), target)
 
 
 def compile(source: str, *, inputs: tuple[str, ...] | list[str]) -> Program:

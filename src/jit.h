@@ -13,12 +13,16 @@ namespace forge {
 using InputBuffer = std::span<const std::byte>;
 using OutputBuffer = std::span<std::byte>;
 
+enum class KernelMode { scalar, avx2 };
+[[nodiscard]] bool host_has_avx2();
+
 struct KernelInfo {
     std::string triple;
     std::string data_layout;
     std::string cpu;
     std::string features;
     std::string ir;
+    std::vector<std::string> remarks;
 };
 
 struct Assembly {
@@ -37,7 +41,8 @@ class Workspace {
 
 class CompiledKernel {
 public:
-    CompiledKernel(const Graph& graph, std::size_t input_count);
+    CompiledKernel(const Graph& graph, std::size_t input_count,
+                   KernelMode mode = KernelMode::scalar);
     ~CompiledKernel();
 
     CompiledKernel(const CompiledKernel&) = delete;
@@ -58,6 +63,7 @@ private:
 };
 
 // Emit Linux x86-64 assembly without linking or executing the foreign object.
-[[nodiscard]] Assembly emit_x86_linux(const Graph& graph, std::size_t input_count);
+[[nodiscard]] Assembly emit_x86_linux(const Graph& graph, std::size_t input_count,
+                                     KernelMode mode = KernelMode::scalar);
 
 } // namespace forge

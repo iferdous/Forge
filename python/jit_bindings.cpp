@@ -2,14 +2,26 @@
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 #include <cstddef>
+#include <string_view>
 #include <vector>
 
 namespace py = pybind11;
 using namespace forge;
 
 namespace {
+
+KernelMode kernel_mode(std::string_view target) {
+    if (target == "scalar") {
+        return KernelMode::scalar;
+    }
+    if (target == "avx2") {
+        return KernelMode::avx2;
+    }
+    throw py::value_error("Kernel target must be 'scalar' or 'avx2'");
+}
 
 py::array checked_array(py::handle value) {
     if (!py::isinstance<py::array>(value)) {
@@ -38,8 +50,8 @@ void check_shape(const py::array& array, const Shape& expected) {
 
 class PythonKernel {
 public:
-    PythonKernel(const Graph& graph, std::size_t input_count)
-        : kernel_(graph, input_count), workspace_(kernel_.make_workspace()) {}
+    PythonKernel(const Graph& graph, std::size_t input_count, std::string_view target)
+        : kernel_(graph, input_count, kernel_mode(target)), workspace_(kernel_.make_workspace()) {}
 
     py::array operator()(const py::args& arguments) {
         std::vector<py::ssize_t> shape(kernel_.output_shape().begin(), kernel_.output_shape().end());
@@ -94,18 +106,22 @@ void bind_jit(py::module_& module) {
         .def_readonly("data_layout", &KernelInfo::data_layout)
         .def_readonly("cpu", &KernelInfo::cpu)
         .def_readonly("features", &KernelInfo::features)
-        .def_readonly("ir", &KernelInfo::ir);
+        .def_readonly("ir", &KernelInfo::ir)
+        .def_readonly("remarks", &KernelInfo::remarks);
 
     py::class_<Assembly>(module, "Assembly")
         .def_readonly("info", &Assembly::info)
         .def_readonly("text", &Assembly::text);
 
     py::class_<PythonKernel>(module, "CompiledKernel")
-        .def(py::init<const Graph&, std::size_t>())
+        .def(py::init<const Graph&, std::size_t, std::string_view>())
         .def("__call__", &PythonKernel::operator())
         .def("run_into", &PythonKernel::run_into, py::arg("output"))
         .def_property_readonly("info", &PythonKernel::info)
         .def_property_readonly("object", &PythonKernel::object);
 
-    module.def("emit_x86_linux", &emit_x86_linux);
+    module.def("has_avx2", &host_has_avx2);
+    module.def("emit_x86_linux", [](const Graph& graph, std::size_t inputs, std::string_view target) {
+        return emit_x86_linux(graph, inputs, kernel_mode(target));
+    });
 }
