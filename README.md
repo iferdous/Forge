@@ -23,19 +23,19 @@ The three-op chain goes from **three loops and two temporary arrays to one loop 
 
 The problem is moving data between operations. Watch the same nine inputs go through a three-loop plan and then a fused plan. Follow the two scratch arrays as they disappear and check that the answers stay the same. The final screen shows where the difference turns into measured time and resident memory on larger inputs.
 
-[Watch or download the fusion demo](showcase/assets/fusion.mp4)
+https://github.com/user-attachments/assets/0a1e3da5-a313-43c9-8d2c-0eb090d27d3b
 
 ### How the compiler handles an input that doesn't fit a vector
 
 AVX2 can work on eight float32 values at once. Watch what happens as the input grows from 8 to 9 to 17 values. The highlighted groups match the machine code for the wide loop and the scalar cleanup path. That last path lets the same kernel handle lengths that aren't divisible by eight.
 
-[Watch or download the lanes demo](showcase/assets/lanes.mp4)
+https://github.com/user-attachments/assets/39dd40a4-6411-4627-a19b-3a2e30a8b75c
 
 ### Where Forge wins, and why it sometimes loses
 
 The demo starts with a sum where floating-point rounding changes the answer, then shows how Forge handles partial blocks in matrix multiplication. Watch for the crossover from an array expression Forge wins to a large matrix where NumPy’s tuned BLAS wins. The final scene shows the cache reusing machine code for the same input shape.
 
-[Watch or download the tradeoffs demo](showcase/assets/tradeoffs.mp4)
+https://github.com/user-attachments/assets/b490602e-8de6-44db-8b76-4bb6ca4c29f7
 
 Narration by Liam via [ElevenLabs](https://elevenlabs.io/). The videos use captured Forge outputs, compiled instructions, and measured timings. [Transcripts and reproduction](docs/showcase.md#regenerate-the-demos)
 
@@ -687,7 +687,7 @@ Expression `A @ B`. Each time cell is median / p95 in µs. This standalone kerne
 
 ## Compiler traces
 
-Follow actual Linux x64 captures through input binding, a typed graph, loop planning, optimized LLVM IR, native disassembly, and the checked output. The 8-, 9-, and 17-element cases exercise the vector-body and scalar-tail paths. The shared producer stays materialized because two consumers need it. The matrix examples cover both a full small result and a shape that crosses all three tile boundaries.
+Follow actual Linux x64 captures through input binding, a typed graph, loop planning, optimized LLVM IR, native disassembly, and the checked output. The 8-, 9-, and 17-element cases exercise the vector-body and scalar-tail paths. The shared producer stays materialized because the multiply reads it twice. The matrix examples cover both a full small result and a shape that crosses all three tile boundaries.
 
 <!-- BEGIN GENERATED TRACES -->
 
