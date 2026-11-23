@@ -14,7 +14,7 @@ Reviewed on November 22, 2026. The goal is to demonstrate when a fused tensor ex
 
 ## Cross-emission check performed on the M3
 
-Apple Clang 16 cross-compiled a C loop equivalent to `sqrt((x + 2) * 3)` for an x86-64 AVX2 target. The compiler reported vectorization width eight. The assembly contains packed `vaddps`, `vmulps`, and `vsqrtps` using YMM registers. This validates the local assembly inspection route. LLVM 23.1.6 linkage, Forge's LLJIT path, Windows execution, and native throughput still need their own checks. The probe files reside on SSK under `.local/research/`.
+Apple Clang 16 cross-compiled a C loop equivalent to `sqrt((x + 2) * 3)` for an x86-64 AVX2 target. The compiler reported vectorization width eight. The assembly contains packed `vaddps`, `vmulps`, and `vsqrtps` using YMM registers. This validates the local assembly inspection route. The probe files reside on SSK under `.local/research/`. Forge now [cross-emits the same operation chain on the M3](plan/04-simd-and-baselines.md#run-and-inspect-the-avx2-kernel) and checks its own native JIT objects in x64 CI.
 
 ~~~c
 void forge_probe(const float *input, float *restrict output, unsigned long count) {

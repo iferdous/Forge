@@ -1,14 +1,15 @@
 # Forge
 
-Forge is a small tensor compiler that fuses array expressions into CPU kernels. It uses C++20 and LLVM ORC LLJIT, with a Python frontend and an x86-64 AVX2 release target.
+Forge is a small tensor compiler for CPU kernels. It uses C++20 and LLVM ORC LLJIT, with a Python frontend and an x86-64 AVX2 release target.
 
 | Benchmark evidence | Status |
 | --- | --- |
-| NumPy comparison, cold compilation, and fusion traffic | Awaiting the compiler and benchmark harness |
+| Unfused three-op demo, 65,536 float32 elements | 100.1 µs scalar, 13.4 µs AVX2 median wall time on one Ubuntu CI runner |
+| Native and NumPy baselines | [Raw samples and JIT disassembly](https://github.com/iferdous/Forge/actions/runs/45101169543) |
 
 ## What Forge compiles
 
-The first complete workload is `sqrt((x + 2) * 3)` on a contiguous `float32` array. Forge validates the expression, represents it as a graph of tensor operations, and lowers it to a loop. The fusion pass keeps the add and multiply results within that loop. LLVM can then run the loop across eight single-precision lanes at a time. A scalar tail handles the remaining elements.
+The first complete workload is `sqrt((x + 2) * 3)` on a contiguous `float32` array. Forge validates the expression, represents it as a graph of tensor operations, and lowers each operation to a loop. The AVX2 path runs eight single-precision lanes at a time and uses a scalar tail for the remaining elements. The next milestone combines the three loops into one.
 
 ~~~text
 Python expression → validated AST → typed tensor IR → kernel plan
@@ -35,6 +36,6 @@ LLVM supplies instruction selection, vectorization, and in-process linking. Forg
 
 ## Development status
 
-[Step 02](docs/plan/02-language-and-reference.md) adds the Python expression frontend, a typed C++ graph, and the NumPy reference evaluator. [Try the frontend on Apple Silicon](docs/plan/02-language-and-reference.md#try-the-frontend-on-the-m3) to enter an expression and inspect its graph. [Step 03](docs/plan/03-scalar-jit.md) lowers the graph to LLVM and calls the generated scalar kernel. The Ubuntu and Windows x64 CI jobs also run the LLVM 23.1.6 smoke test from Step 01.
+[Step 03](docs/plan/03-scalar-jit.md) added the scalar JIT. [Step 04](docs/plan/04-simd-and-baselines.md) added native AVX2 and the benchmark harness. On Apple Silicon you can run the scalar kernel and [inspect the cross-emitted x86 assembly](docs/plan/04-simd-and-baselines.md#run-and-inspect-the-avx2-kernel). The timing above is a CI smoke measurement for the native call boundary. [Step 05](docs/plan/05-operator-fusion.md) adds operator fusion.
 
 The HRT engineering write-up inspired Forge's focus on measuring repeated overhead and intermediate data movement. Forge applies that idea to arithmetic on arrays already in memory. [HRT intern projects](https://www.hudsonrivertrading.com/hrtbeat/intern-spotlight-software-engineering-summer-projects/)
