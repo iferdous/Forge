@@ -1,6 +1,6 @@
 # Forge
 
-Forge is a C++20 and LLVM compiler for a small Python tensor language. It compiles float32 array expressions into native CPU code. Its main optimization, **operator fusion**, combines several operations into one loop so intermediate arrays never need to be written and read back.
+Forge is a C++20 and LLVM JIT compiler for float32 array expressions written in Python. Its **operator fusion** pass combines eligible operations into a single CPU loop and removes the intermediate arrays those operations would otherwise write and reread.
 
 [Performance at a glance](#performance-at-a-glance) · [Video walkthroughs](#video-walkthroughs) · [Complete benchmark tables](#complete-benchmark-tables) · [Compiler traces](#compiler-traces) · [Try it](#try-it)
 
@@ -15,7 +15,7 @@ Forge is a C++20 and LLVM compiler for a small Python tensor language. It compil
 
 ![Warm native AVX2 timings for the fused and unfused three-op chain at every tested size on Ubuntu and Windows](showcase/assets/fusion-latency.png)
 
-The three-op chain goes from **three loops and two temporary arrays to one loop and zero temporary arrays**. Both plans produce identical float32 output for the checked inputs. Under the same allocating Python boundary, the 32-element mean is Forge’s strongest result (9.55× Ubuntu, 8.88× Windows). Max is its weakest on both hosts (NumPy leads by 43.52× at 65,536 elements on Ubuntu and by 15.42× at 1,048,576 on Windows).
+The table shows warm medians on shared x64 CI. The Python calls include output allocation, and every comparison excludes compilation. The three-op chain goes from **three loops and two temporary arrays to one loop and zero temporary arrays**. Both plans produce identical float32 output for the checked inputs. Under the same allocating Python boundary, the 32-element mean is Forge’s strongest result (9.55× Ubuntu, 8.88× Windows). Max is its weakest on both hosts (NumPy leads by 43.52× at 65,536 elements on Ubuntu and by 15.42× at 1,048,576 on Windows).
 
 ## Video walkthroughs
 
@@ -4192,7 +4192,61 @@ Verified 17 × 35 output (sample)
 
 ## Try it
 
-Once the LLVM-enabled build is on `PYTHONPATH`, run `python -m forge 'sqrt((x + 2) * 3)'` for both loop plans, the result, and the generated x86 instructions. Omit the expression for the interactive prompt. Use `--inspect ir` or `--inspect assembly` for the full output. [Build setup](docs/plan/01-toolchain-and-ci.md#reproduce-the-smoke-test) · [Playground setup](docs/plan/05-operator-fusion.md#try-an-expression)
+<details>
+<summary>Build and run Forge on Ubuntu 24.04 x86-64</summary>
+
+From a fresh checkout, build the Python module with the pinned LLVM SDK and run the fusion example.
+
+~~~sh
+sudo apt-get update
+sudo apt-get install -y build-essential ca-certificates cmake curl \
+  git python3-dev python3-venv libxml2-dev libzstd-dev zlib1g-dev
+
+git clone https://github.com/iferdous/Forge.git
+cd Forge
+
+mkdir -p .local/tmp .local/cache/pip
+export TMPDIR="$PWD/.local/tmp" XDG_CACHE_HOME="$PWD/.local/cache"
+export PIP_CACHE_DIR="$PWD/.local/cache/pip"
+python3 -m venv .local/venv
+.local/venv/bin/python -m pip install --only-binary=:all: -r requirements.txt
+
+cmake -DFORGE_LLVM_PLATFORM=linux-x64 -P cmake/ProvisionLLVM.cmake
+cmake --preset release -DFORGE_BUILD_PYTHON=ON \
+  "-DLLVM_DIR=$(cat .local/llvm-dir-linux-x64.txt)" \
+  "-DPython_EXECUTABLE=$PWD/.local/venv/bin/python"
+cmake --build --preset release --parallel 4
+
+export PYTHONPATH="$PWD/.local/build/release/python"
+.local/venv/bin/python -m forge 'sqrt((x + 2) * 3)'
+~~~
+
+Expect three loops unfused, one loop fused, and [3.0, 6.0, 9.0, 12.0, 3.0, 6.0, 9.0, 12.0, 3.0] from both plans. Linux x86-64 hosts with AVX2 print "Forge result (avx2)". Run the test suite with the same build.
+
+~~~sh
+ctest --preset release
+~~~
+
+</details>
+
+<details>
+<summary>Run Forge from an existing LLVM build on Apple Silicon</summary>
+
+~~~sh
+export PYTHONPATH="$PWD/.local/build/macos-llvm/python"
+.local/venv/bin/python -m forge 'sqrt((x + 2) * 3)'
+~~~
+
+Apple Silicon runs the scalar kernel and can emit x86-64 AVX2 assembly for inspection. For build notes or the frontend-only preset, see the platform guides. [Apple Silicon JIT](docs/plan/03-scalar-jit.md#run-and-inspect-the-scalar-kernel) · [Frontend-only build](docs/plan/02-language-and-reference.md#try-the-frontend-on-the-m3)
+
+</details>
+
+With either LLVM build loaded, run the module without an expression for the interactive prompt. Use the assembly or IR switch to inspect the full generated code.
+
+~~~sh
+.local/venv/bin/python -m forge
+.local/venv/bin/python -m forge 'sqrt((x + 2) * 3)' --inspect assembly
+~~~
 
 ~~~python
 import forge
@@ -4227,7 +4281,7 @@ Forge owns expression validation, shape inference, fusion decisions, loop schedu
 
 ## Implementation plan
 
-Stages 1–8 shipped, and the latest Ubuntu, Windows, and sanitizer jobs passed. Release-grade timings on a dedicated AVX2 host remain open. [Stage audit](docs/stage-audit.md) · [CI run](https://github.com/iferdous/Forge/actions/runs/45126633544) · [MIT license](LICENSE)
+Stages 1–8 shipped, and the latest Ubuntu, Windows, and sanitizer jobs passed. Release-grade timings on a dedicated AVX2 host remain open. [Stage audit](docs/stage-audit.md) · [CI run](https://github.com/iferdous/Forge/actions/runs/45259042794) · [MIT license](LICENSE)
 
 | Step | Deliverable |
 | --- | --- |
