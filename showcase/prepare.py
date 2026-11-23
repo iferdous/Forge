@@ -9,7 +9,6 @@ from pathlib import Path
 from statistics import median
 from zipfile import ZipFile
 
-RELEASE_URL = "https://github.com/iferdous/Forge/releases/tag/v0.1.0-preview.1"
 HOSTS = {"linux-x64": "Ubuntu x64", "windows-x64": "Windows x64"}
 METRICS = {
     "alloc": ("forge_allocating_median_ns", "numpy_allocating_median_ns", "Forge", "NumPy"),
@@ -62,7 +61,7 @@ def read_evidence(path):
                           "rows": rows, "latency_ns": latency, "csv": csv_text})
         cov = json.loads(archive.read("linux-hardening/coverage.json"))[0]["totals"]
         hardening = json.loads(archive.read("linux-hardening/hardening.json"))
-    return {"commit": manifest["commit"], "ci": manifest["ci_run"], "release": RELEASE_URL,
+    return {"commit": manifest["commit"], "ci": manifest["ci_run"],
             "hosts": hosts, "coverage": cov, "hardening": hardening}
 
 
@@ -82,6 +81,7 @@ def charts(data, folder, captures):
                          "axes.edgecolor": "#b3beb0", "xtick.color": GRAY, "ytick.color": GRAY,
                          "figure.facecolor": PAPER, "axes.facecolor": PAPER, "axes.titleweight": "bold",
                          "grid.color": "#ccd4c9", "axes.spines.top": False, "axes.spines.right": False})
+    timing_source = f"shared CI · {data['commit'][:7]}"
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.4), sharey=True, layout="constrained")
     for ax, host in zip(axes, data["hosts"], strict=True):
         rows = [row for row in host["rows"] if row["id"] == "E5"]
@@ -94,7 +94,7 @@ def charts(data, folder, captures):
         ax.legend(frameon=False, loc="upper left")
     axes[0].set_ylabel("Warm native AVX2 latency (µs)")
     fig.suptitle("One loop instead of three", x=.025, ha="left", fontsize=22)
-    fig.supxlabel("E5 · identical preallocated AVX2 calls · median of shared CI samples", color=GRAY, fontsize=10)
+    fig.supxlabel(f"E5 · identical preallocated AVX2 calls · medians · {timing_source}", color=GRAY, fontsize=10)
     save(fig, folder, "fusion-latency.png")
     plt.close(fig)
 
@@ -118,7 +118,7 @@ def charts(data, folder, captures):
             ax.text(x, y, f"{value:.2f}×", ha="center", va="center", fontweight="bold",
                     color="white" if abs(scaled[y, x]) > 2.5 else INK)
     fig.suptitle("Which vector workloads benefit?", x=.025, ha="left", fontsize=22)
-    fig.supxlabel("Warm Python, allocating · NumPy median / Forge median · above 1× favors Forge",
+    fig.supxlabel(f"Warm Python, allocating · NumPy median / Forge median · above 1× favors Forge · {timing_source}",
                   color=GRAY, fontsize=10)
     save(fig, folder, "workload-atlas.png")
     plt.close(fig)
@@ -136,7 +136,7 @@ def charts(data, folder, captures):
         ax.legend(frameon=False, loc="upper left")
     axes[0].set_ylabel("Warm allocating latency (µs)")
     fig.suptitle("Tiled matmul and single-threaded BLAS", x=.025, ha="left", fontsize=22)
-    fig.supxlabel("Python API · log scale · shared CI", color=GRAY, fontsize=10)
+    fig.supxlabel(f"Python API · log scale · {timing_source}", color=GRAY, fontsize=10)
     save(fig, folder, "matmul-latency.png")
     plt.close(fig)
 
@@ -156,7 +156,7 @@ def charts(data, folder, captures):
     ax.grid(True, axis="x", alpha=.8)
     ax.legend(frameon=False, loc="upper right")
     ax.set_title("What the first call costs", loc="left", fontsize=22, pad=19)
-    fig.supxlabel("E5, 1,024 elements · fresh process includes interpreter startup and shutdown",
+    fig.supxlabel(f"E5, 1,024 elements · fresh process includes interpreter startup and shutdown · {timing_source}",
                   color=GRAY, fontsize=10)
     save(fig, folder, "first-use.png")
     plt.close(fig)

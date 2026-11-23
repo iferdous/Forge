@@ -3,7 +3,7 @@
 import argparse
 from collections import defaultdict
 import json
-from math import floor, log10
+from math import ceil, floor, log10
 from pathlib import Path
 
 
@@ -50,6 +50,73 @@ def micros(ns):
 
 def latency(median_ns, p95_ns):
     return f"{micros(median_ns)} / {micros(p95_ns)}"
+
+
+def measurement(host, workload, size, boundary):
+    row = next(row for row in host["rows"] if row["id"] == workload and row["dimensions"] == size)
+    test, baseline, _, _ = row["comparisons"][boundary]
+    return test, baseline
+
+
+def python_winner(forge, numpy):
+    if forge < numpy:
+        return f"**Forge {numpy / forge:.2f}× faster**"
+    if numpy < forge:
+        return f"**NumPy {forge / numpy:.2f}× faster**"
+    return "**1.00×**"
+
+
+def headline_table(data):
+    headers = ["Measured workload", *(host["label"] for host in data["hosts"])]
+    rows = [
+        ["1,024-element add → multiply → square root, allocating Python call against NumPy"],
+        ["65,536-element same chain, native AVX2 unfused → fused"],
+        ["65,536-element same chain, native fused scalar → AVX2"],
+        ["512 × 512 matrix multiply, allocating Python call"],
+    ]
+    for host in data["hosts"]:
+        forge, numpy = measurement(host, "E5", "1024", "alloc")
+        rows[0].append(python_winner(forge, numpy))
+        fused, unfused = measurement(host, "E5", "65536", "fusion")
+        rows[1].append(f"**{unfused / fused:.2f}×** · {unfused / 1000:.2f} → {fused / 1000:.2f} µs")
+        avx2, scalar = measurement(host, "E5", "65536", "simd")
+        rows[2].append(f"**{scalar / avx2:.2f}×**")
+        forge, numpy = measurement(host, "M1", "512 × 512 × 512", "alloc")
+        rows[3].append(python_winner(forge, numpy))
+    source = (f"These warm medians come from shared x64 CI at {data['commit'][:7]}. "
+              f"The native rows compare matched preallocated calls. [Source run]({data['ci']})")
+    return table(headers, rows) + "\n\n" + source
+
+
+def startup_table(data):
+    headers = ["First-use timing for the 1,024-element chain", *(host["label"] for host in data["hosts"])]
+    metrics = (
+        ("Cold parse and compile in an initialized process", "cold_parse_and_compile", 1e6, "ms"),
+        ("First allocating call", "first_allocating_call", 1e3, "µs"),
+        ("Cache hit on the parsed graph, including the new handle", "cache_hit_new_handle", 1e3, "µs"),
+        ("Fresh process, including interpreter launch and exit", "fresh_process", 1e6, "ms"),
+    )
+    rows = [[label, *(f"{host['latency_ns'][key] / divisor:.2f} {unit}" for host in data["hosts"])]
+            for label, key, divisor, unit in metrics]
+    breakeven = ["Estimated warm calls to earn back compilation against NumPy"]
+    for host in data["hosts"]:
+        forge, numpy = measurement(host, "E5", "1024", "alloc")
+        latency_ns = host["latency_ns"]
+        cost = latency_ns["cold_parse_and_compile"] + latency_ns["first_allocating_call"] - forge
+        breakeven.append(f"{max(1, ceil(cost / (numpy - forge))):,}" if numpy > forge else "None")
+    return table(headers, [*rows, breakeven])
+
+
+def benchmark_hardware(data):
+    runners = " and ".join(f"{host['label']} ({host['cpu']})" for host in data["hosts"])
+    first = data["hosts"][0]
+    count = len(first["rows"])
+    kernels = len({row["id"] for row in first["rows"]})
+    return (f"The grid ran on {runners} with one OpenBLAS thread per runner. "
+            f"It covers **{kernels} kernels and {count} size cases per runner** with "
+            f"**{first['repetitions']} interleaved warm samples per configuration**. "
+            "Python p95 summarizes batch means. Native p95 summarizes iteration batches. "
+            "The downloadable grids include full precision and the 512 MiB streaming working set.")
 
 
 def benchmark_tables(data):
@@ -146,7 +213,11 @@ def main():
     args = parser.parse_args()
     path = ROOT / "README.md"
     current = path.read_text(encoding="utf-8")
-    updated = replace_section(current, "BENCHMARKS", benchmark_tables(read_data("benchmarks")))
+    benchmarks = read_data("benchmarks")
+    updated = replace_section(current, "HEADLINES", headline_table(benchmarks))
+    updated = replace_section(updated, "STARTUP", startup_table(benchmarks))
+    updated = replace_section(updated, "BENCHMARK HARDWARE", benchmark_hardware(benchmarks))
+    updated = replace_section(updated, "BENCHMARKS", benchmark_tables(benchmarks))
     updated = replace_section(updated, "TRACES", trace_sections(read_data("captures")))
     if args.check:
         if current != updated:

@@ -37,17 +37,13 @@ python -m forge --help
 
 ## Regenerate the figures and README tables
 
-Install the [build prerequisites](plan/01-toolchain-and-ci.md), enable LLVM and Python bindings, then follow the [full timing protocol](plan/07-python-runtime-and-benchmarks.md#reproduce-the-suite) to run a new benchmark. To recreate the published charts from their original inputs, use the tagged evidence ZIP and the [existing capture](../showcase/data/captures.json). Keep generated work under the ignored SSK checkout directory .local.
+Install the [build prerequisites](plan/01-toolchain-and-ci.md), enable LLVM and Python bindings, then follow the [full timing protocol](plan/07-python-runtime-and-benchmarks.md#reproduce-the-suite) to run a new benchmark. The repository includes the [archived timing inputs](../showcase/data/benchmark-evidence.zip) and [separate native capture](../showcase/data/captures.json). Keep local outputs in the ignored SSK checkout directory .local.
 
 ~~~sh
-mkdir -p .local/showcase
-gh release download v0.1.0-preview.1 --repo iferdous/Forge \
-  --pattern forge-evidence.zip --dir .local/showcase
 python -m pip install matplotlib==3.10.8
-cp showcase/data/captures.json .local/showcase/showcase-captures.json
 MPLCONFIGDIR="$PWD/.local/showcase/matplotlib" python showcase/prepare.py \
-  --evidence .local/showcase/forge-evidence.zip \
-  --captures .local/showcase/showcase-captures.json --out showcase
+  --evidence showcase/data/benchmark-evidence.zip \
+  --captures showcase/data/captures.json --out showcase
 python3 showcase/readme.py
 python3 showcase/readme.py --check
 ~~~
@@ -63,10 +59,16 @@ python showcase/capture.py --out .local/showcase/new-captures.json \
 
 ## Regenerate the demos
 
-Use Node 22 or later, Chromium, FFmpeg with libass support, and FFprobe. The source includes the ElevenLabs voice takes. Run with the silent flag to generate a caption-only composition. Set absolute paths in HYPERFRAMES_FFMPEG_PATH and HYPERFRAMES_FFPROBE_PATH if the renderer needs them.
+Use Node 22 or later, Chromium, FFmpeg with libass support, FFprobe, and Matplotlib 3.10.8. The films use the tagged preview timing snapshot so the numbers match the narration. The source includes the ElevenLabs voice takes. Run with the silent flag to generate a caption-only composition. Set absolute paths in HYPERFRAMES_FFMPEG_PATH and HYPERFRAMES_FFPROBE_PATH if the renderer needs them.
 
 ~~~sh
-python3 showcase/films/build.py --data showcase/data --work .local/showcase/productions
+mkdir -p .local/showcase/preview
+gh release download v0.1.0-preview.1 --repo iferdous/Forge \
+  --pattern forge-evidence.zip --dir .local/showcase/preview
+MPLCONFIGDIR="$PWD/.local/showcase/matplotlib" python showcase/prepare.py \
+  --evidence .local/showcase/preview/forge-evidence.zip \
+  --captures showcase/data/captures.json --out .local/showcase/preview
+python3 showcase/films/build.py --data .local/showcase/preview/data --work .local/showcase/productions
 for film in fusion lanes tradeoffs; do
   dir=".local/showcase/productions/$film"
   npx --yes hyperframes@0.9.84 lint "$dir"

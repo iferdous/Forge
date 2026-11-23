@@ -15,10 +15,11 @@ Stages 01–08 shipped their planned code and tooling. The identified open exit 
 
 ## Cross-stage verification
 
-- **Fresh x64 build and execution.** Ubuntu and Windows each passed 23 CTest entries and 61 benchmark case validations at commit 5e04a53. The Ubuntu job also ran the recorded native AVX2 examples and isolated RSS experiment. [Fresh CI and artifacts](https://github.com/iferdous/Forge/actions/runs/45124189095)
+- **Current benchmark snapshot.** Ubuntu 24.04 and Windows Server 2025 x64 each passed 23 CTest entries and all 61 benchmark-case validations at source commit 4a1620b. The README timing tables and charts use that run's harness output. The CI page tracks validation of later commits on main. [Benchmark CI and artifacts](https://github.com/iferdous/Forge/actions/runs/45268500878) · [CI on main](https://github.com/iferdous/Forge/actions/workflows/ci.yml?query=branch%3Amain)
+- **Recorded native examples.** The seven published AVX2 traces and isolated RSS experiment are from the Ubuntu x64 run at 5e04a53. [Trace CI and artifacts](https://github.com/iferdous/Forge/actions/runs/45124189095)
 - **Apple Silicon.** The M3 executed the scalar JIT and verified x86-64 code emission. Of 23 CTest entries, 22 passed and the native AVX2 tail guard test skipped on this host. Linux and Windows x64 executed that path.
-- **Sanitizer coverage.** The tagged Ubuntu job passed 20 instrumented CTest entries and recorded 869 of 919 lines and 291 of 342 branches in first-party C++ sources. Separate guard tests exercise JIT buffer edges because the emitted kernels execute without ASan/UBSan instrumentation. [Hardening scope](plan/08-release-and-handoff.md#hardening-scope) · [Tagged CI](https://github.com/iferdous/Forge/actions/runs/45121155018)
-- **Evidence integrity.** The showcase chart generator verifies the preview archive file digests before reading the metrics. The examples in the README identify the separate source commit that produced their captures. [Preview evidence](https://github.com/iferdous/Forge/releases/tag/v0.1.0-preview.1) · [Measurement report](results.md)
+- **Sanitizer coverage.** Linux x64 at 4a1620b passed 20 ASan/UBSan CTest entries. First-party C++ coverage held at 869 of 919 lines (94.56%) and 291 of 342 branches (85.09%). The documented vptr and indirect function exclusions apply. Separate guard tests exercise JIT buffer edges. [Hardening scope](plan/08-release-and-handoff.md#hardening-scope) · [Benchmark and sanitizer CI](https://github.com/iferdous/Forge/actions/runs/45268500878)
+- **Evidence integrity.** The chart generator verifies the archived raw evidence against a SHA-256 manifest before rendering. The tagged preview supplies timing for the published films. [Current evidence archive](../showcase/data/benchmark-evidence.zip) · [Preview evidence](https://github.com/iferdous/Forge/releases/tag/v0.1.0-preview.1) · [Measurement report](results.md)
 
 ## Refined acceptance brief
 
