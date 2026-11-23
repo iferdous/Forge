@@ -37,8 +37,6 @@ The demo starts with a sum where floating-point rounding changes the answer, the
 
 https://github.com/user-attachments/assets/d81e4276-488b-4272-a702-0d109e27c60c
 
-Narration by Liam via [ElevenLabs](https://elevenlabs.io/). The videos use captured Forge outputs, compiled instructions, and measured timings. [Transcripts and reproduction](docs/showcase.md#regenerate-the-demos)
-
 ## Memory, startup, and coverage
 
 | Metric | Result |
@@ -4241,5 +4239,3 @@ Stages 1–8 shipped, and the latest Ubuntu, Windows, and sanitizer jobs passed.
 | [06 · Reductions and matmul](docs/plan/06-reductions-and-matmul.md) | Add aggregate and matrix kernels with separate accuracy checks |
 | [07 · Python runtime and benchmarks](docs/plan/07-python-runtime-and-benchmarks.md) | Validate the Python API, compilation cache, and ten-kernel comparison |
 | [08 · Release and handoff](docs/plan/08-release-and-handoff.md) | Publish a reproducible benchmark, a short demo, and evidence-backed résumé bullets |
-
-The HRT engineering write-up inspired Forge's focus on measuring repeated overhead and intermediate data movement. [Research and constraints](docs/research.md) · [HRT intern projects](https://www.hudsonrivertrading.com/hrtbeat/intern-spotlight-software-engineering-summer-projects/)
