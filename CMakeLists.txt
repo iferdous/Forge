@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(Forge LANGUAGES CXX)
 
 option(FORGE_ENABLE_JIT "Build with the pinned LLVM SDK" ON)
+option(FORGE_BUILD_PYTHON "Build the Python frontend" ON)
 
 if(FORGE_ENABLE_JIT)
     if(WIN32)
@@ -31,6 +32,29 @@ target_include_directories(forge_graph PUBLIC src)
 set_target_properties(forge_graph PROPERTIES POSITION_INDEPENDENT_CODE ON)
 forge_target_defaults(forge_graph)
 
+if(FORGE_BUILD_PYTHON)
+    include(FetchContent)
+    find_package(Python 3.12 REQUIRED COMPONENTS Interpreter Development.Module)
+    FetchContent_Declare(
+        pybind11
+        URL https://codeload.github.com/pybind/pybind11/tar.gz/refs/tags/v3.1.0
+        URL_HASH SHA256=ef712655692a2e9bf7bb7874c022564a45f91d847ddee987e720cd9e28849665
+    )
+    FetchContent_MakeAvailable(pybind11)
+
+    set(forge_python_dir "${CMAKE_CURRENT_BINARY_DIR}/python")
+    foreach(source __init__.py _language.py _reference.py)
+        configure_file("python/forge/${source}" "${forge_python_dir}/forge/${source}" COPYONLY)
+    endforeach()
+    pybind11_add_module(_forge_ir MODULE NO_EXTRAS python/bindings.cpp)
+    target_link_libraries(_forge_ir PRIVATE forge_graph)
+    set_target_properties(_forge_ir PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY "$<1:${forge_python_dir}/forge>"
+        RUNTIME_OUTPUT_DIRECTORY "$<1:${forge_python_dir}/forge>"
+    )
+    forge_target_defaults(_forge_ir)
+endif()
+
 include(CTest)
 
 if(BUILD_TESTING)
@@ -52,6 +76,14 @@ if(BUILD_TESTING)
     target_link_libraries(forge_graph_tests PRIVATE forge_graph GTest::gtest_main)
     forge_target_defaults(forge_graph_tests)
     gtest_discover_tests(forge_graph_tests)
+
+    if(FORGE_BUILD_PYTHON)
+        add_test(NAME forge_python_reference
+            COMMAND "${Python_EXECUTABLE}" -m unittest discover
+                -s "${CMAKE_CURRENT_SOURCE_DIR}/tests" -p test_reference.py -v)
+        set_tests_properties(forge_python_reference PROPERTIES
+            ENVIRONMENT "PYTHONPATH=${forge_python_dir};PYTHONDONTWRITEBYTECODE=1")
+    endif()
 
     if(FORGE_ENABLE_JIT)
         llvm_map_components_to_libnames(llvm_libraries Core OrcJIT native)

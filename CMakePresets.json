@@ -24,6 +24,13 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
+    },
+    {
+      "name": "frontend",
+      "inherits": "release",
+      "cacheVariables": {
+        "FORGE_ENABLE_JIT": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -36,6 +43,11 @@
       "name": "debug",
       "configurePreset": "debug",
       "configuration": "Debug"
+    },
+    {
+      "name": "frontend",
+      "configurePreset": "frontend",
+      "configuration": "Release"
     }
   ],
   "testPresets": [
@@ -43,15 +55,34 @@
       "name": "release",
       "configurePreset": "release",
       "configuration": "Release",
-      "output": { "outputOnFailure": true },
-      "execution": { "noTestsAction": "error" }
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
     },
     {
       "name": "debug",
       "configurePreset": "debug",
       "configuration": "Debug",
-      "output": { "outputOnFailure": true },
-      "execution": { "noTestsAction": "error" }
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "frontend",
+      "configurePreset": "frontend",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
     }
   ]
 }
