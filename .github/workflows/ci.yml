@@ -43,7 +43,7 @@ jobs:
         run: |
           $llvmDir = Get-Content .local/llvm-dir-${{ matrix.platform }}.txt
           $generator = @()
-          if ($IsWindows) { $generator = @('-G', 'Visual Studio 17 2022', '-A', 'x64') }
+          if ($IsWindows) { $generator = @('-A', 'x64') }
           cmake --preset release "-DLLVM_DIR=$llvmDir" @generator
 
       - name: Build

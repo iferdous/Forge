@@ -19,8 +19,8 @@ Use the upstream release metadata to double-check these compressed assets and th
 
 | Platform | Asset | SHA-256 |
 | --- | --- | --- |
-| Linux x64 | `LLVM-23.1.6-Linux-X64.tar.zst` | `59e14234f145927f982b50627e8bafaf2fca50151b7d973d6a0b40796ddcfe9a` |
-| Windows x64 | `clang+llvm-23.1.6-x86_64-pc-windows-msvc.tar.zst` | `7623f582089983c1cb51030cf1996514b19464e5669099571b399e8543770155` |
+| Linux x64 | `LLVM-23.1.6-Linux-X64.tar.xz` | `bd4d1c434ff69ef06d19e7934c04708da677e5f2eb51f5bcf052ab91818f0094` |
+| Windows x64 | `clang+llvm-23.1.6-x86_64-pc-windows-msvc.tar.xz` | `16af05919cf36958dfb4ddaa4fc4d9d4ff577f5daeb76bc112ea49cd8ced82b2` |
 | Source | `llvm-project-23.1.6.src.tar.xz` | `d3b86ab29cfb4445a6652e5c2642ccc75e04e38084dde3701d323320f35a31da` |
 
 ## Exit evidence
