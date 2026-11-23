@@ -91,7 +91,7 @@ jobs:
           @{ cpu = $cpu; os = $env:RUNNER_OS; arch = $env:RUNNER_ARCH; image = $env:ImageOS; commit = $env:GITHUB_SHA; llvm = '23.1.6' } |
             ConvertTo-Json | Set-Content -Encoding utf8 "$out/host.json"
           python bench/inspect_simd.py --objdump "$objdump" --out "$out"
-          & $benchmark --benchmark_min_time=0.01s --benchmark_min_warmup_time=0.01 --benchmark_repetitions=5 --benchmark_enable_random_interleaving=true "--benchmark_out=$out/native.json" --benchmark_out_format=json
+          & $benchmark --benchmark_min_time=0.02s --benchmark_min_warmup_time=0.01 --benchmark_repetitions=5 --benchmark_enable_random_interleaving=true "--benchmark_out=$out/native.json" --benchmark_out_format=json
           python bench/python_baseline.py --out "$out/python.json"
 
       - name: Upload the Stage 04 evidence

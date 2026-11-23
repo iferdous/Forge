@@ -58,8 +58,9 @@ void cases(benchmark::Benchmark* benchmark_case) {
     }
 }
 
-BENCHMARK(add)->Apply(cases);
-BENCHMARK(demo)->Apply(cases);
+// A wall clock avoids coarse per-process CPU timer ticks on Windows.
+BENCHMARK(add)->Apply(cases)->UseRealTime();
+BENCHMARK(demo)->Apply(cases)->UseRealTime();
 
 } // namespace
 
@@ -68,7 +69,7 @@ int main(int argc, char** argv) {
     if (benchmark::ReportUnrecognizedArguments(argc, argv)) {
         return 1;
     }
-    benchmark::AddCustomContext("comparison", "Forge scalar vs AVX2, preallocated");
+    benchmark::AddCustomContext("comparison", "Forge scalar vs AVX2, preallocated, wall clock");
     benchmark::AddCustomContext("host_has_avx2", forge::host_has_avx2() ? "yes" : "no");
     benchmark::RunSpecifiedBenchmarks();
     benchmark::Shutdown();
