@@ -153,7 +153,10 @@ if(BUILD_TESTING)
         add_test(NAME forge_python_reference
             COMMAND "${Python_EXECUTABLE}" -m unittest discover
                 -s "${CMAKE_CURRENT_SOURCE_DIR}/tests" -p test_reference.py -v)
-        set_tests_properties(forge_python_reference PROPERTIES
+        add_test(NAME forge_python_properties
+            COMMAND "${Python_EXECUTABLE}" -m unittest discover
+                -s "${CMAKE_CURRENT_SOURCE_DIR}/tests" -p test_properties.py -v)
+        set_tests_properties(forge_python_reference forge_python_properties PROPERTIES
             ENVIRONMENT "PYTHONPATH=${forge_python_dir};PYTHONDONTWRITEBYTECODE=1")
     endif()
 
