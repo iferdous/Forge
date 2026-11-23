@@ -11,6 +11,7 @@ import struct
 
 import numpy as np
 
+from . import _forge_ir
 from ._forge_ir import Graph, GraphBuilder, Op, SourceLocation
 from ._reference import evaluate
 
@@ -151,6 +152,18 @@ class Program:
     def reference(self, *arrays: np.ndarray) -> np.ndarray:
         """Evaluate the typed graph using rounded float32 NumPy operations."""
         return evaluate(self.graph(*arrays), arrays)
+
+    def jit(self, *example_arrays: np.ndarray):
+        """Compile a reusable scalar kernel for the example input shapes."""
+        if not hasattr(_forge_ir, "CompiledKernel"):
+            raise RuntimeError("LLVM JIT support requires a build with FORGE_ENABLE_JIT=ON")
+        return _forge_ir.CompiledKernel(self.graph(*example_arrays), len(self.inputs))
+
+    def emit_x86(self, *example_arrays: np.ndarray):
+        """Inspect Linux x86-64 assembly without executing it."""
+        if not hasattr(_forge_ir, "emit_x86_linux"):
+            raise RuntimeError("LLVM assembly emission requires a build with FORGE_ENABLE_JIT=ON")
+        return _forge_ir.emit_x86_linux(self.graph(*example_arrays), len(self.inputs))
 
 
 def compile(source: str, *, inputs: tuple[str, ...] | list[str]) -> Program:

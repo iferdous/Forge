@@ -7,6 +7,10 @@
 
 namespace py = pybind11;
 
+#ifdef FORGE_ENABLE_JIT
+void bind_jit(py::module_& module);
+#endif
+
 PYBIND11_MODULE(_forge_ir, module) {
     using namespace forge;
 
@@ -46,4 +50,7 @@ PYBIND11_MODULE(_forge_ir, module) {
         .def("finish", [](GraphBuilder& builder, NodeId output) {
             return std::move(builder).finish(output);
         });
+#ifdef FORGE_ENABLE_JIT
+    bind_jit(module);
+#endif
 }
