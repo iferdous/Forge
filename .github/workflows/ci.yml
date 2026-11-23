@@ -126,10 +126,11 @@ jobs:
       - name: Build the instrumented native tests
         run: |
           llvm_dir=$(cat .local/llvm-dir-linux-x64.txt)
+          # The SDK omits RTTI. JIT entry points have no Clang function-type preamble.
           cmake -S . -B .local/build/hardening -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_C_COMPILER=clang-18 -DCMAKE_CXX_COMPILER=clang++-18 \
             "-DLLVM_DIR=$llvm_dir" -DFORGE_BUILD_PYTHON=OFF \
-            "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -fprofile-instr-generate -fcoverage-mapping"
+            "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-sanitize=vptr,function -fno-omit-frame-pointer -fprofile-instr-generate -fcoverage-mapping"
           cmake --build .local/build/hardening --parallel 4
 
       - name: Run ASan and UBSan tests and collect Forge source coverage

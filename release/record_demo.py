@@ -119,6 +119,7 @@ def render(out, evidence):
     host = meta["cpu"]["model"]
     short_host = re.sub(r"\s+\d+-Core Processor$", "", host)
     short_host = short_host.replace("Intel(R)", "Intel").replace("Xeon(R)", "Xeon")
+    profile = "Shared CI timing" if meta["profile"] == "ci-smoke" else meta["profile"]
     caption = (
         f"Demo sample: nine float32 values, executed with Forge's {target} target. "
         f"Assembly: the fused native AVX2 LLJIT object from {host}.\n\n"
@@ -151,7 +152,7 @@ def render(out, evidence):
         frames.save(image)
 
         image, draw = frames.slide("Measure fusion in isolation",
-                                   f"{short_host}  |  Shared CI timing  |  Commit {meta['commit'][:7]}")
+                                   f"{short_host}  |  {profile}  |  Commit {meta['commit'][:7]}")
         frames.panel(draw, [f"{ELEMENTS:,} float32 elements  /  warm native AVX2", "",
                             f"Unfused    {unfused:>8.2f} µs     3 loops",
                             f"Fused      {fused:>8.2f} µs     1 loop", "",

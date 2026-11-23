@@ -84,6 +84,7 @@ def hardening_evidence(root, commit):
         coverage.append({"files": files, "totals": row["totals"]})
     compiler = (root / "compiler.txt").read_text(encoding="utf-8").splitlines()[0]
     summary = {"commit": commit, "compiler": compiler, "sanitizers": ["address", "undefined"],
+               "ubsan_exclusions": ["vptr", "function"],
                "ctest_entries_passed": int(passed.group(1)), "guard_tests": GUARD_TESTS,
                "coverage_scope": "first-party C++ files under src/"}
     return (("hardening.json", json_bytes(summary)), ("coverage.json", json_bytes(coverage)))
