@@ -8,6 +8,7 @@ Forge is a small tensor compiler for CPU kernels. It uses C++20 and LLVM ORC LLJ
 | Benchmark scope | Warm medians on shared CI, with preallocated buffers and compilation excluded |
 | Fusion comparison | [Timings and method](docs/plan/05-operator-fusion.md#verified-results) · [Raw samples and JIT disassembly](https://github.com/iferdous/Forge/actions/runs/45102680498) |
 | Reductions and matmul | [Numerical checks and single-thread NumPy comparison](docs/plan/06-reductions-and-matmul.md#verified-results) |
+| Full suite and first-use latency | [61-case benchmark grid](docs/plan/07-python-runtime-and-benchmarks.md#verified-results) · [Raw timings and charts](https://github.com/iferdous/Forge/actions/runs/45118321641) |
 
 ## What Forge compiles
 
@@ -37,6 +38,8 @@ LLVM supplies instruction selection, vectorization, and in-process linking. Forg
 [Research and constraints](docs/research.md) records the platform checks, numerical limits, and measurement rules behind the plan.
 
 ## Development status
+
+Reuse a compiled kernel across calls or opt into the in-process code cache. The full suite measures warm Python calls, native SIMD and fusion, and first-use latency separately. [Python API and benchmark reproduction](docs/plan/07-python-runtime-and-benchmarks.md#python-api)
 
 The terminal playground runs both plans and checks their results against the reference. Omit the expression to open the interactive prompt. On Apple Silicon the playground executes the scalar kernel and can show generated x86-64 assembly. [Build and run Forge](docs/plan/05-operator-fusion.md#try-an-expression)
 
