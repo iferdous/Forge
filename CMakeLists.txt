@@ -70,25 +70,35 @@ if(FORGE_BUILD_BENCHMARKS)
     include(FetchContent)
     set(BENCHMARK_ENABLE_TESTING OFF)
     set(BENCHMARK_ENABLE_INSTALL OFF)
+    set(forge_benchmark_version 1.10.0)
     FetchContent_Declare(
         benchmark
-        URL https://codeload.github.com/google/benchmark/tar.gz/refs/tags/v1.10.0
+        URL https://codeload.github.com/google/benchmark/tar.gz/refs/tags/v${forge_benchmark_version}
         URL_HASH SHA256=acc5c7c0fbed855c4aaa2d7c3c36fb82b0c15c28f4e151e3f679c2fc0aa404af
     )
     FetchContent_MakeAvailable(benchmark)
     add_executable(forge_native_bench bench/native.cpp)
-    target_link_libraries(forge_native_bench PRIVATE forge_jit benchmark::benchmark)
-    set_target_properties(forge_native_bench PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_CURRENT_BINARY_DIR}/bench>")
-    forge_target_defaults(forge_native_bench)
+    add_executable(forge_native_suite bench/native_suite.cpp)
+    foreach(target forge_native_bench forge_native_suite)
+        target_link_libraries(${target} PRIVATE forge_jit benchmark::benchmark)
+        set_target_properties(${target} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_CURRENT_BINARY_DIR}/bench>")
+        forge_target_defaults(${target})
+    endforeach()
+    if(MSVC)
+        target_compile_options(forge_native_suite PRIVATE /fp:strict)
+    else()
+        target_compile_options(forge_native_suite PRIVATE -ffp-contract=off)
+    endif()
 endif()
 
 if(FORGE_BUILD_PYTHON)
     include(FetchContent)
     find_package(Python 3.12 REQUIRED COMPONENTS Interpreter Development.Module)
+    set(forge_pybind11_version 3.1.0)
     FetchContent_Declare(
         pybind11
-        URL https://codeload.github.com/pybind/pybind11/tar.gz/refs/tags/v3.1.0
+        URL https://codeload.github.com/pybind/pybind11/tar.gz/refs/tags/v${forge_pybind11_version}
         URL_HASH SHA256=ef712655692a2e9bf7bb7874c022564a45f91d847ddee987e720cd9e28849665
     )
     FetchContent_MakeAvailable(pybind11)
@@ -110,6 +120,11 @@ if(FORGE_BUILD_PYTHON)
     else()
         target_link_libraries(_forge_ir PRIVATE forge_graph)
     endif()
+endif()
+
+if(FORGE_BUILD_BENCHMARKS)
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/bench/toolchain-$<CONFIG>.json" CONTENT
+        "{\"cmake\": \"${CMAKE_VERSION}\", \"compiler\": \"${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}\", \"configuration\": \"$<CONFIG>\", \"llvm\": \"${LLVM_PACKAGE_VERSION}\", \"pybind11\": \"${forge_pybind11_version}\", \"google_benchmark\": \"${forge_benchmark_version}\"}\n")
 endif()
 
 include(CTest)
