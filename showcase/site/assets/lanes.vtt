@@ -1,0 +1,10 @@
+WEBVTT
+
+00:00:00.200 --> 00:00:09.480
+Eight inputs fill one AVX2 vector. The actual JIT object shows packed add, multiply, and square root instructions operating on Y M M registers.
+
+00:00:10.280 --> 00:00:17.331
+Add a ninth input and it takes the scalar cleanup path. The last output still matches the float32 reference bit for bit.
+
+00:00:18.131 --> 00:00:25.912
+With seventeen inputs, the same schedule runs two packed iterations and one scalar iteration. The packed body increments the index by eight.
