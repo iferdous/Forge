@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   jit-smoke:
-    name: JIT smoke · ${{ matrix.platform }}
+    name: Release checks · ${{ matrix.platform }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     strategy:
@@ -70,7 +70,7 @@ jobs:
       - name: Run the graph, Python reference, and JIT tests
         run: ctest --preset release --verbose
 
-      - name: Run the full Stage 07 benchmark grid
+      - name: Reproduce the full benchmark grid
         shell: pwsh
         run: |
           $PSNativeCommandUseErrorActionPreference = $true
@@ -83,18 +83,25 @@ jobs:
           $env:PYTHONDONTWRITEBYTECODE = '1'
           $env:OPENBLAS_NUM_THREADS = '1'
           $env:MKL_NUM_THREADS = '1'
-          $out = '.local/evidence/stage-07'
+          $out = '.local/evidence/stage-08'
           python bench/suite.py --profile ci-smoke --out "$out" --native "$native" --objdump "$objdump"
           python bench/suite_report.py "$out"
 
-      - name: Upload the Stage 07 evidence
+      - name: Record the 30-second native AVX2 demo
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install --only-binary=:all: imageio-ffmpeg==0.6.0
+          PYTHONPATH="$PWD/.local/build/release/python" PYTHONDONTWRITEBYTECODE=1 \
+            python release/record_demo.py .local/evidence/stage-08 --out .local/evidence/stage-08
+
+      - name: Upload release evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: stage-07-${{ matrix.platform }}
+          name: stage-08-${{ matrix.platform }}
           path: |
-            .local/evidence/stage-07/
-            !.local/evidence/stage-07/.matplotlib/
+            .local/evidence/stage-08/
+            !.local/evidence/stage-08/.matplotlib/
           include-hidden-files: true
 
   native-hardening:
