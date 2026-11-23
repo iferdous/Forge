@@ -1,26 +1,54 @@
 # Forge
 
-Forge is a small tensor compiler for CPU kernels. It uses C++20 and LLVM ORC LLJIT, with a Python frontend and an x86-64 AVX2 release target.
+Forge is a small CPU tensor compiler built with C++20 and LLVM ORC LLJIT. Its Python frontend compiles float32 array expressions into native code, fuses eligible pointwise operations, and supports ordered reductions and tiled matrix multiplication.
 
-| Benchmark evidence | Status |
-| --- | --- |
-| Three-op demo, 65,536 float32 elements, native AVX2 | Ubuntu 23.25 → 12.83 µs and Windows 25.81 → 14.31 µs with fusion (~1.8× on both) |
-| Benchmark scope | Warm medians on shared CI, with preallocated buffers and compilation excluded |
-| Fusion comparison | [Timings and method](docs/plan/05-operator-fusion.md#verified-results) · [Raw samples and JIT disassembly](https://github.com/iferdous/Forge/actions/runs/45102680498) |
-| Reductions and matmul | [Numerical checks and single-thread NumPy comparison](docs/plan/06-reductions-and-matmul.md#verified-results) |
-| Full suite and first-use latency | [61-case benchmark grid](docs/plan/07-python-runtime-and-benchmarks.md#verified-results) · [Raw timings and charts](https://github.com/iferdous/Forge/actions/runs/45118321641) |
+[30-second demo and release assets](https://github.com/iferdous/Forge/releases/tag/v0.1.0-preview.1) · [Ubuntu and Windows CI](https://github.com/iferdous/Forge/actions/workflows/ci.yml) · [MIT license](LICENSE)
 
-## What Forge compiles
+## Measured results
 
-The first complete workload is `sqrt((x + 2) * 3)` on a contiguous `float32` array. Forge validates the expression, represents it as a graph of tensor operations, and fuses eligible operations into one loop. The example keeps the intermediate values in registers and writes only the result array. The AVX2 path runs eight single-precision lanes at a time and uses a scalar tail for the remaining elements.
+For `sqrt((x + 2) * 3)`, Forge generates one loop with zero temporary arrays. The same graph can run with fusion disabled for comparison.
 
-~~~text
-Python expression → validated AST → typed tensor IR → kernel plan
-                                                        ↓
-                          NumPy result ← tests ← LLVM IR → LLJIT → output array
+| 65,536 float32 elements | Ubuntu x64 · EPYC 9V74 | Windows x64 · EPYC 7763 |
+| --- | ---: | ---: |
+| Native AVX2, unfused → fused | 22.18 → 11.41 µs (1.94×) | 31.08 → 13.18 µs (2.36×) |
+| Warm allocating Python, Forge vs NumPy | 3.08× | 3.38× |
+
+The native comparison uses preallocated buffers on both sides. The Python comparison includes output allocation. Both exclude compilation and come from shared CI at commit `4ea42a3`. Trends across the full grid and losses against NumPy are included in the report. [Raw benchmark run](https://github.com/iferdous/Forge/actions/runs/45118321641) · [Method and rerun command](docs/plan/07-python-runtime-and-benchmarks.md#reproduce-the-suite)
+
+## Try it
+
+Once the LLVM-enabled build is on `PYTHONPATH`, run `python -m forge 'sqrt((x + 2) * 3)'` for both loop plans, the result, and the generated x86 instructions. Omit the expression for the interactive prompt. Use `--inspect ir` or `--inspect assembly` for the full output. [Build setup](docs/plan/01-toolchain-and-ci.md#reproduce-the-smoke-test) · [Playground setup](docs/plan/05-operator-fusion.md#try-an-expression)
+
+~~~python
+import forge
+import numpy as np
+
+x = np.array([1, 10, 25, 46], dtype=np.float32)
+program = forge.compile("sqrt((x + 2) * 3)", inputs=("x",))
+target = "avx2" if forge.has_avx2() else "scalar"
+kernel = program.jit(x, target=target, cache=True)
+print(kernel(x))  # [ 3.  6.  9. 12.]
 ~~~
 
-LLVM supplies instruction selection, vectorization, and in-process linking. Forge owns the language, shape rules, kernel planning, fusion legality, and the experiments that isolate each optimization. Forge also compiles full-array `sum`, `max`, and `mean` and tiled rank-two matrix multiplication.
+## Architecture
+
+~~~mermaid
+flowchart LR
+    A["Python expression"] --> B["Bounded parser"]
+    B --> C["Typed tensor graph"]
+    C --> D["Kernel plan and fusion"]
+    D --> E["LLVM IR and vectorization"]
+    E --> F["ORC LLJIT"]
+    F --> G["Owned float32 result"]
+~~~
+
+Forge owns expression validation, shape inference, fusion decisions, loop scheduling, and LLVM IR lowering. LLVM supplies instruction selection, vectorization, and in-process linking. The verified AVX2 demo processes eight float32 elements per packed iteration and uses a scalar remainder.
+
+## Numerical contract and platforms
+
+- Inputs are native-endian, C-contiguous rank-one or rank-two NumPy float32 arrays. Pointwise operators accept equal shapes or a scalar operand.
+- Pointwise steps round separately in float32. Sum, mean, and matmul preserve their documented accumulation order. Max propagates NaNs and has a deterministic signed-zero tie rule. [Reduction and matmul contract](docs/plan/06-reductions-and-matmul.md#expression-and-numerical-contract)
+- Ubuntu and Windows x64 run the native AVX2 checks. Apple Silicon runs the scalar JIT and can emit Linux x86-64 assembly for inspection. [Release handoff and test scope](docs/plan/08-release-and-handoff.md)
 
 ## Implementation plan
 
@@ -35,17 +63,4 @@ LLVM supplies instruction selection, vectorization, and in-process linking. Forg
 | [07 · Python runtime and benchmarks](docs/plan/07-python-runtime-and-benchmarks.md) | Validate the Python API, compilation cache, and ten-kernel comparison |
 | [08 · Release and handoff](docs/plan/08-release-and-handoff.md) | Publish a reproducible benchmark, a short demo, and evidence-backed résumé bullets |
 
-[Research and constraints](docs/research.md) records the platform checks, numerical limits, and measurement rules behind the plan.
-
-## Development status
-
-Reuse a compiled kernel across calls or opt into the in-process code cache. The full suite measures warm Python calls, native SIMD and fusion, and first-use latency separately. [Python API and benchmark reproduction](docs/plan/07-python-runtime-and-benchmarks.md#python-api)
-
-The terminal playground runs both plans and checks their results against the reference. Omit the expression to open the interactive prompt. On Apple Silicon the playground executes the scalar kernel and can show generated x86-64 assembly. [Build and run Forge](docs/plan/05-operator-fusion.md#try-an-expression)
-
-~~~sh
-python -m forge 'sqrt((x + 2) * 3)'
-python -m forge 'mean((x + 2) * 3)'
-~~~
-
-The HRT engineering write-up inspired Forge's focus on measuring repeated overhead and intermediate data movement. Forge applies that idea to arithmetic on arrays already in memory. [HRT intern projects](https://www.hudsonrivertrading.com/hrtbeat/intern-spotlight-software-engineering-summer-projects/)
+The HRT engineering write-up inspired Forge's focus on measuring repeated overhead and intermediate data movement. [Research and constraints](docs/research.md) · [HRT intern projects](https://www.hudsonrivertrading.com/hrtbeat/intern-spotlight-software-engineering-summer-projects/)
