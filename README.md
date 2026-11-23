@@ -2,18 +2,26 @@
 
 Forge is a small CPU tensor compiler built with C++20 and LLVM ORC LLJIT. Its Python frontend compiles float32 array expressions into native code, fuses eligible pointwise operations, and supports ordered reductions and tiled matrix multiplication.
 
-[30-second demo and release assets](https://github.com/iferdous/Forge/releases/tag/v0.1.0-preview.1) · [Ubuntu and Windows CI](https://github.com/iferdous/Forge/actions/workflows/ci.yml) · [MIT license](LICENSE)
+[**Open the interactive showcase**](https://iferdous.github.io/Forge/) · [Benchmark report](docs/results.md) · [Stage 1–8 audit](docs/stage-audit.md) · [MIT preview release](https://github.com/iferdous/Forge/releases/tag/v0.1.0-preview.1)
+
+[![Animated capture of the Forge fusion walkthrough. Click for three narrated demos.](showcase/site/assets/fusion-preview.gif)](https://iferdous.github.io/Forge/#watch)
+
+[Inspect expression → graph → loop plan → LLVM IR → AVX2 → result](https://iferdous.github.io/Forge/#inspect) · [Explore timings across 10 kernels](https://iferdous.github.io/Forge/#benchmarks) · [Reproduce the demos and charts](docs/showcase.md)
 
 ## Measured results
 
-For `sqrt((x + 2) * 3)`, Forge generates one loop with zero temporary arrays. The same graph can run with fusion disabled for comparison.
+Forge compiles the float32 expression `sqrt((x + 2) * 3)` into **one loop with zero temporary arrays**, down from three loops and two temporaries. The resulting LLJIT object contains eight-lane AVX2 arithmetic and a scalar remainder. Fused and unfused executions preserve the same numerical result.
 
-| 65,536 float32 elements | Ubuntu x64 · EPYC 9V74 | Windows x64 · EPYC 7763 |
+| Workload and warm measurement | Ubuntu x64 | Windows x64 |
 | --- | ---: | ---: |
-| Native AVX2, unfused → fused | 22.18 → 11.41 µs (1.94×) | 31.08 → 13.18 µs (2.36×) |
-| Warm allocating Python, Forge vs NumPy | 3.08× | 3.38× |
+| 1,024 elements · allocating Python, NumPy → Forge | **3.21×** | **3.65×** |
+| 65,536 elements · native AVX2, unfused → fused | 23.40 → 12.89 µs (**1.82×**) | 31.31 → 13.07 µs (**2.40×**) |
+| 65,536 elements · native fused, scalar → AVX2 | **4.00×** | **7.95×** |
+| 512 × 512 × 512 matmul · allocating NumPy advantage | **7.37×** | **5.51×** |
 
-The native comparison uses preallocated buffers on both sides. The Python comparison includes output allocation. Both exclude compilation and come from shared CI at commit `4ea42a3`. Trends across the full grid and losses against NumPy are included in the report. [Raw benchmark run](https://github.com/iferdous/Forge/actions/runs/45118321641) · [Method and rerun command](docs/plan/07-python-runtime-and-benchmarks.md#reproduce-the-suite)
+![Warm native AVX2 timings for the fused and unfused expression across the full size grid on both runners](showcase/site/assets/fusion-latency.png)
+
+The chart measures a preallocated native call. The first and last table rows measure allocating Python calls. All timings come from shared CI at the preview tag and exclude compilation. Both x64 runners passed **23 test entries and 61 benchmark-case accuracy checks**. An isolated Linux run at 8,388,608 elements also measured the first-call **RSS increase falling from 64.008 MiB to 0.004 MiB** after fusion. [Full results, percentile data and scope](docs/results.md) · [Tagged CI](https://github.com/iferdous/Forge/actions/runs/45121155018) · [Native RSS capture](https://github.com/iferdous/Forge/actions/runs/45124189095)
 
 ## Try it
 
@@ -42,7 +50,7 @@ flowchart LR
     F --> G["Owned float32 result"]
 ~~~
 
-Forge owns expression validation, shape inference, fusion decisions, loop scheduling, and LLVM IR lowering. LLVM supplies instruction selection, vectorization, and in-process linking. The verified AVX2 demo processes eight float32 elements per packed iteration and uses a scalar remainder.
+Forge owns expression validation, shape inference, fusion decisions, loop scheduling, and LLVM IR lowering. LLVM supplies instruction selection, vectorization, and in-process linking. The verified AVX2 demo processes eight float32 elements per packed iteration and uses a scalar remainder. [Step through each component](https://iferdous.github.io/Forge/#inspect) · [Source map](docs/showcase.md#follow-one-expression-through-the-compiler)
 
 ## Numerical contract and platforms
 
