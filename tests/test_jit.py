@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import unittest
 
 import numpy as np
@@ -155,6 +157,23 @@ class FusionJitTests(unittest.TestCase):
         for target in ("scalar", "avx2") if forge.has_avx2() else ("scalar",):
             result = program.jit(a, b, c, target=target)(a, b, c)
             np.testing.assert_array_equal(result.view(np.uint32), 0)
+
+    def test_terminal_playground_shows_the_plans_result_and_packed_code(self):
+        demo = subprocess.run(
+            [sys.executable, "-m", "forge", "sqrt((a + 2) * 3)",
+             "--array", "a=[1,10,25,46]", "--inspect", "assembly"],
+            capture_output=True, check=True, text=True,
+        )
+        for fragment in ("loops=3 temporary_arrays=2", "loops=1 temporary_arrays=0",
+                         "[3.0, 6.0, 9.0, 12.0]", "Both plans match NumPy", "vsqrtps"):
+            self.assertIn(fragment, demo.stdout)
+
+        prompt = subprocess.run(
+            [sys.executable, "-m", "forge"], input="x / 2\nx + 2\n\n",
+            capture_output=True, check=True, text=True,
+        )
+        self.assertIn("Expected an input, literal", prompt.stdout)
+        self.assertIn("Both plans match NumPy", prompt.stdout)
 
     def test_cross_emission_has_one_store_per_vector_or_scalar_iteration(self):
         x = np.ones(9, dtype=np.float32)

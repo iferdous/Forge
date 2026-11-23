@@ -94,7 +94,7 @@ if(FORGE_BUILD_PYTHON)
     FetchContent_MakeAvailable(pybind11)
 
     set(forge_python_dir "${CMAKE_CURRENT_BINARY_DIR}/python")
-    foreach(source __init__.py _language.py _reference.py)
+    foreach(source __init__.py __main__.py _language.py _reference.py)
         configure_file("python/forge/${source}" "${forge_python_dir}/forge/${source}" COPYONLY)
     endforeach()
     pybind11_add_module(_forge_ir MODULE NO_EXTRAS python/bindings.cpp)

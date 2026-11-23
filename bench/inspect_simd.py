@@ -37,7 +37,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--objdump", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--require-avx2", action="store_true")
     options = parser.parse_args()
+    if options.require_avx2 and not forge.has_avx2():
+        parser.error("The evidence run requires native AVX2")
     options.out.mkdir(parents=True, exist_ok=True)
 
     program = forge.compile("sqrt((x + 2) * 3)", inputs=("x",))
