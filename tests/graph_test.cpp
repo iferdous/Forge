@@ -67,4 +67,15 @@ TEST(GraphTest, ChecksInputRankAndByteSizeEvenForLargeShapes) {
     EXPECT_EQ(std::move(builder).finish(input).nodes()[input].shape, (Shape{maximum, 0}));
 }
 
+TEST(GraphTest, ValidatesMatmulOutputEvenWhenBothInputsAreEmpty) {
+    GraphBuilder builder;
+    constexpr auto large = std::numeric_limits<std::size_t>::max() / sizeof(float);
+    const auto left = builder.input(0, {large, 0}, {});
+    const auto right = builder.input(1, {0, 2}, {});
+    const auto empty = builder.input(2, {0, 0}, {});
+    EXPECT_THROW(builder.matmul(left, right, {}), std::overflow_error);
+    const auto result = builder.matmul(left, empty, {});
+    EXPECT_EQ(std::move(builder).finish(result).nodes()[result].shape, (Shape{large, 0}));
+}
+
 } // namespace forge

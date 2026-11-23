@@ -123,6 +123,47 @@ class ReferenceTests(unittest.TestCase):
                 expected = np.sqrt(a * a + (np.float32(2.5) * b) * b)
                 self.assertFloat32BitsEqual(program.reference(a, b), expected)
 
+    def test_full_reductions_follow_the_float32_contract(self):
+        ordered = np.array([[1e20, 1], [-1e20, 3]], dtype=np.float32)
+        for name, expected in (("sum", 3), ("mean", 0.75), ("max", np.float32(1e20))):
+            program = forge.compile(f"{name}(x)", inputs=("x",))
+            result = program.reference(ordered)
+            self.assertFloat32BitsEqual(result, np.array(expected, dtype=np.float32))
+            self.assertTrue(result.flags.owndata)
+            actual = program.reference(np.array([1, np.nan, 2], dtype=np.float32))
+            self.assertTrue(np.isnan(actual))
+            empty = np.empty((2, 0), dtype=np.float32)
+            if name == "max":
+                with self.assertRaisesRegex(ValueError, "nonempty"):
+                    program.reference(empty)
+            elif name == "mean":
+                self.assertTrue(np.isnan(program.reference(empty)))
+            else:
+                self.assertEqual(program.reference(empty).view(np.uint32), 0)
+        maximum = forge.compile("max(x)", inputs=("x",))
+        for values, bits in (([-0., 0.], 0), ([0., -0.], 0), ([-1., -0., -0.], 0x80000000)):
+            self.assertEqual(maximum.reference(np.array(values, dtype=np.float32)).view(np.uint32), bits)
+        with self.assertRaisesRegex(ValueError, "reduction over an array"):
+            forge.compile("sum(max(x))", inputs=("x",)).reference(ordered)
+
+    def test_matmul_shape_zero_inner_dimension_and_rounding(self):
+        program = forge.compile("a @ b", inputs=("a", "b"))
+        a = np.array([[1, 2, 3], [-1, 0, 1]], dtype=np.float32)
+        b = np.array([[1, 2], [3, 4], [5, 6]], dtype=np.float32)
+        self.assertFloat32BitsEqual(program.reference(a, b), np.array([[22, 28], [4, 4]], dtype=np.float32))
+        for m, k, n in ((0, 2, 3), (2, 2, 0), (2, 0, 3)):
+            self.assertFloat32BitsEqual(
+                program.reference(np.empty((m, k), dtype=np.float32), np.empty((k, n), dtype=np.float32)),
+                np.zeros((m, n), dtype=np.float32),
+            )
+        with self.assertRaisesRegex(ValueError, "equal inner dimensions"):
+            program.reference(a[:, :2].copy(), b)
+        with self.assertRaisesRegex(ValueError, "rank-two"):
+            program.reference(a.ravel(), b)
+        left = np.array([0xBF800000, 0x3F800001], dtype=np.uint32).view(np.float32).reshape(1, 2)
+        right = np.array([0x3F800000, 0x3F7FFFFE], dtype=np.uint32).view(np.float32).reshape(2, 1)
+        self.assertFloat32BitsEqual(program.reference(left, right), np.zeros((1, 1), dtype=np.float32))
+
     def test_rejects_unsupported_syntax_and_reports_location(self):
         for source in ("x.attr", "x[0]", "x ** 2", "x - 2", "-x", "f(x)",
                        "sqrt(x, x)", "sqrt(x=x)", "sqrt(*x)", "sqrt()", "True",

@@ -9,8 +9,10 @@ namespace forge {
 using NodeId = std::size_t;
 using Shape = std::vector<std::size_t>;
 
-enum class Op { input, literal, splat, add, multiply, sqrt };
+enum class Op { input, literal, splat, add, multiply, sqrt, reduce_sum, reduce_max, reduce_mean, matmul };
 [[nodiscard]] const char* op_name(Op op);
+[[nodiscard]] bool is_reduction(Op op);
+[[nodiscard]] std::size_t element_count(const Shape& shape);
 
 struct SourceLocation {
     std::size_t line = 1;
@@ -49,6 +51,8 @@ public:
     NodeId literal(float value, SourceLocation source);
     NodeId binary(Op op, NodeId left, NodeId right, SourceLocation source);
     NodeId sqrt(NodeId operand, SourceLocation source);
+    NodeId reduce(Op op, NodeId operand, SourceLocation source);
+    NodeId matmul(NodeId left, NodeId right, SourceLocation source);
     [[nodiscard]] Graph finish(NodeId output) &&;
 
 private:

@@ -20,7 +20,11 @@ PYBIND11_MODULE(_forge_ir, module) {
         .value("SPLAT", Op::splat)
         .value("ADD", Op::add)
         .value("MULTIPLY", Op::multiply)
-        .value("SQRT", Op::sqrt);
+        .value("SQRT", Op::sqrt)
+        .value("SUM", Op::reduce_sum)
+        .value("MAX", Op::reduce_max)
+        .value("MEAN", Op::reduce_mean)
+        .value("MATMUL", Op::matmul);
 
     py::class_<SourceLocation>(module, "SourceLocation")
         .def(py::init<std::size_t, std::size_t>())
@@ -56,6 +60,8 @@ PYBIND11_MODULE(_forge_ir, module) {
         .def("literal", &GraphBuilder::literal)
         .def("binary", &GraphBuilder::binary)
         .def("sqrt", &GraphBuilder::sqrt)
+        .def("reduce", &GraphBuilder::reduce)
+        .def("matmul", &GraphBuilder::matmul)
         .def("finish", [](GraphBuilder& builder, NodeId output) {
             return std::move(builder).finish(output);
         });

@@ -39,8 +39,31 @@ const char* op_name(Op op) {
     case Op::add: return "add";
     case Op::multiply: return "multiply";
     case Op::sqrt: return "sqrt";
+    case Op::reduce_sum: return "sum";
+    case Op::reduce_max: return "max";
+    case Op::reduce_mean: return "mean";
+    case Op::matmul: return "matmul";
     }
     throw std::logic_error("Unknown graph operation");
+}
+
+bool is_reduction(Op op) {
+    return op == Op::reduce_sum || op == Op::reduce_max || op == Op::reduce_mean;
+}
+
+std::size_t element_count(const Shape& shape) {
+    if (std::ranges::find(shape, 0) != shape.end()) {
+        return 0;
+    }
+    constexpr auto limit = std::numeric_limits<std::size_t>::max() / sizeof(float);
+    std::size_t count = 1;
+    for (const auto extent : shape) {
+        if (extent > limit / count) {
+            throw std::overflow_error("Array byte size exceeds the platform limit");
+        }
+        count *= extent;
+    }
+    return count;
 }
 
 Graph::Graph(std::vector<Node> nodes, NodeId output)
@@ -79,16 +102,7 @@ NodeId GraphBuilder::input(std::size_t index, Shape shape, SourceLocation source
         throw std::invalid_argument("Input must have rank one or two");
     }
 
-    // A zero dimension means the entire buffer is empty.
-    if (std::ranges::find(shape, 0) == shape.end()) {
-        std::size_t bytes = sizeof(float);
-        for (const auto extent : shape) {
-            if (extent > std::numeric_limits<std::size_t>::max() / bytes) {
-                throw std::overflow_error("Input byte size exceeds the platform limit");
-            }
-            bytes *= extent;
-        }
-    }
+    static_cast<void>(element_count(shape));
 
     Node node{Op::input, source, std::move(shape), {}};
     node.input_index = index;
@@ -129,9 +143,46 @@ NodeId GraphBuilder::sqrt(NodeId operand, SourceLocation source) {
     return append({Op::sqrt, source, nodes_.at(operand).shape, {operand}});
 }
 
+NodeId GraphBuilder::reduce(Op op, NodeId operand, SourceLocation source) {
+    const auto& shape = nodes_.at(operand).shape;
+    if (!is_reduction(op) || shape.empty()) {
+        throw std::invalid_argument("Expected a reduction over an array");
+    }
+    if (op == Op::reduce_max && element_count(shape) == 0) {
+        throw std::invalid_argument("max requires a nonempty array");
+    }
+    return append({op, source, {}, {operand}});
+}
+
+NodeId GraphBuilder::matmul(NodeId left, NodeId right, SourceLocation source) {
+    const auto& a = nodes_.at(left).shape;
+    const auto& b = nodes_.at(right).shape;
+    if (a.size() != 2 || b.size() != 2 || a[1] != b[0]) {
+        throw std::invalid_argument("Matrix multiplication requires rank-two arrays with equal inner dimensions");
+    }
+    Shape output{a[0], b[1]};
+    static_cast<void>(element_count(output));
+    return append({Op::matmul, source, std::move(output), {left, right}});
+}
+
 Graph GraphBuilder::finish(NodeId output) && {
     if (nodes_.at(output).shape.empty()) {
-        throw std::invalid_argument("The expression must produce an array");
+        // Constant-only scalar expressions are outside the array language.
+        std::vector<bool> used(output + 1);
+        used[output] = true;
+        bool has_reduction = false;
+        for (auto i = output + 1; i > 0 && !has_reduction; --i) {
+            const auto id = i - 1;
+            if (used[id]) {
+                has_reduction = is_reduction(nodes_[id].op);
+                for (const auto operand : nodes_[id].operands) {
+                    used[operand] = true;
+                }
+            }
+        }
+        if (!has_reduction) {
+            throw std::invalid_argument("The expression must produce an array or reduce one");
+        }
     }
 
     for (const auto& node : nodes_) {

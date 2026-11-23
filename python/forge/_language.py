@@ -19,6 +19,8 @@ _MAX_SOURCE_LENGTH = 4096
 _MAX_DEPTH = 32
 _MAX_NODES = 256
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_BINARY = {ast.Add: Op.ADD, ast.Mult: Op.MULTIPLY, ast.MatMult: Op.MATMUL}
+_FUNCTIONS = {"sqrt": Op.SQRT, "sum": Op.SUM, "max": Op.MAX, "mean": Op.MEAN}
 
 
 def _round_integer(value: int) -> int:
@@ -101,14 +103,13 @@ class _Parser:
                 return self.literal(node, value)
             case ast.UnaryOp(op=ast.USub(), operand=ast.Constant(value=value)):
                 return self.literal(node, value, sign=-1)
-            case ast.BinOp(left=left, right=right, op=(ast.Add() | ast.Mult()) as operator):
+            case ast.BinOp(left=left, right=right, op=operator) if type(operator) in _BINARY:
                 operands = self.visit(left, depth + 1), self.visit(right, depth + 1)
-                op = Op.ADD if isinstance(operator, ast.Add) else Op.MULTIPLY
-                return self.emit(node, op, operands)
-            case ast.Call(func=ast.Name(id="sqrt"), args=[operand], keywords=[]):
-                return self.emit(node, Op.SQRT, (self.visit(operand, depth + 1),))
+                return self.emit(node, _BINARY[type(operator)], operands)
+            case ast.Call(func=ast.Name(id=name), args=[operand], keywords=[]) if name in _FUNCTIONS:
+                return self.emit(node, _FUNCTIONS[name], (self.visit(operand, depth + 1),))
             case _:
-                raise self.error(node, "Expected an input, literal, +, *, or sqrt(expression)")
+                raise self.error(node, "Expected an input, literal, +, *, @, sqrt, sum, max, or mean")
 
 
 @dataclass(frozen=True)
@@ -144,6 +145,10 @@ class Program:
                 node_id = builder.literal(instruction.payload, location)
             elif op == Op.SQRT:
                 node_id = builder.sqrt(operands[0], location)
+            elif op == Op.MATMUL:
+                node_id = builder.matmul(*operands, location)
+            elif op in (Op.SUM, Op.MAX, Op.MEAN):
+                node_id = builder.reduce(op, operands[0], location)
             else:
                 node_id = builder.binary(op, *operands, location)
             node_ids.append(node_id)
@@ -184,7 +189,7 @@ def compile(source: str, *, inputs: tuple[str, ...] | list[str]) -> Program:
     for name in names:
         if not isinstance(name, str):
             raise TypeError("Each input name must be a string")
-        if not _IDENTIFIER.fullmatch(name) or keyword.iskeyword(name) or name == "sqrt":
+        if not _IDENTIFIER.fullmatch(name) or keyword.iskeyword(name) or name in _FUNCTIONS:
             raise ValueError(f"Invalid or reserved input name {name!r}")
     if len(set(names)) != len(names):
         raise ValueError("Input names must be unique")
