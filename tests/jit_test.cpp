@@ -81,8 +81,8 @@ TEST(MatmulJit, MatchesScalarReferenceAcrossTileBoundaries) {
     GraphBuilder builder;
     const auto a = builder.input(0, {m, k}, {});
     const auto b = builder.input(1, {k, n}, {});
-    const auto product = builder.matmul(a, b, {});
-    const auto graph = std::move(builder).finish(product);
+    const auto product_node = builder.matmul(a, b, {});
+    const auto graph = std::move(builder).finish(product_node);
     std::vector<float> left(m * k);
     std::vector<float> right(k * n);
     std::vector<float> output(m * n);
