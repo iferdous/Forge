@@ -1,0 +1,46 @@
+WEBVTT
+
+00:00:00.200 --> 00:00:04.520
+A compiler has to keep the math predictable. Add one to
+
+00:00:04.520 --> 00:00:06.877
+sixteen million seven hundred seventy-seven thousand
+
+00:00:06.877 --> 00:00:09.626
+two hundred sixteen in thirty-two-bit floating point,
+
+00:00:09.626 --> 00:00:13.553
+and it rounds away. That’s why this ordered sum returns
+
+00:00:13.553 --> 00:00:13.946
+four.
+
+00:00:14.646 --> 00:00:17.742
+Matrix multiply has a different problem: reusing data.
+
+00:00:17.742 --> 00:00:21.225
+Forge works on blocks instead of walking the full
+
+00:00:21.225 --> 00:00:24.708
+matrices in one sweep. This example crosses the tile
+
+00:00:24.708 --> 00:00:28.191
+boundaries, so the kernel has to finish with smaller
+
+00:00:28.191 --> 00:00:29.739
+blocks along the edges.
+
+00:00:37.639 --> 00:00:40.857
+There’s also a cost to generating machine code in the
+
+00:00:40.857 --> 00:00:43.753
+first place. Repeat the same shape and Forge reuses
+
+00:00:43.753 --> 00:00:46.649
+that compiled code. Change the length, and the cache
+
+00:00:46.649 --> 00:00:49.866
+records a miss because the kernel needs to be compiled
+
+00:00:49.866 --> 00:00:51.153
+for the new shape.

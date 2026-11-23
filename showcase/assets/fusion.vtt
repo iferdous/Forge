@@ -1,0 +1,43 @@
+WEBVTT
+
+00:00:00.200 --> 00:00:03.045
+Here’s the whole idea behind Forge. This Python
+
+00:00:03.045 --> 00:00:06.245
+expression adds two, multiplies by three, and takes the
+
+00:00:06.245 --> 00:00:09.801
+square root. We’ll run the same nine numbers two ways
+
+00:00:09.801 --> 00:00:12.646
+and compare what the CPU has to do.
+
+00:00:13.346 --> 00:00:16.598
+Start with fusion turned off. Forge finishes the add
+
+00:00:16.598 --> 00:00:20.211
+for every input and saves that array. Then it reads
+
+00:00:20.211 --> 00:00:23.824
+that array back for the multiply. The square root does
+
+00:00:23.824 --> 00:00:27.438
+the same thing, so there are three passes and two
+
+00:00:27.438 --> 00:00:28.160
+intermediate arrays.
+
+00:00:28.860 --> 00:00:33.476
+Turn fusion on and look at the new loop. Forge reads a
+
+00:00:33.476 --> 00:00:36.937
+group, does all three operations while those values are
+
+00:00:36.937 --> 00:00:40.399
+in CPU registers, and writes the final answers. The
+
+00:00:40.399 --> 00:00:43.476
+output stays the same. Those two temporary arrays
+
+00:00:43.476 --> 00:00:43.860
+disappear.

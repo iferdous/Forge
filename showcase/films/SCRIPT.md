@@ -1,21 +1,23 @@
 # Film transcripts
 
+The videos use ElevenLabs narration by Liam on the spoken scenes. Several scenes use on-screen evidence and captions to give the viewer time to read the numbers and instructions.
+
 ## One loop instead of three
 
-1. Forge turns this Python expression into a native kernel. Nine elements go in, and both execution plans return the same float32 values.
-2. The unfused plan runs add, multiply, and square root in separate loops. Two temporary arrays carry values between those passes.
-3. The fused plan performs all three operations inside one loop. The intermediate values stay in registers until the result is written.
-4. In the isolated Linux probe, the unfused workspace needs sixty-four MiB of scratch. For the separate sixty-five thousand five hundred thirty-six element case, compare the warm native A V X two medians.
+1. Here’s the whole idea behind Forge. This Python expression adds two, multiplies by three, and takes the square root. We’ll run the same nine numbers two ways and compare what the CPU has to do.
+2. Start with fusion turned off. Forge finishes the add for every input and saves that array. Then it reads that array back for the multiply. The square root does the same thing, so there are three passes and two intermediate arrays.
+3. Turn fusion on and look at the new loop. Forge reads a group, does all three operations while those values are in CPU registers, and writes the final answers. The output stays the same. Those two temporary arrays disappear.
+4. That difference shows up at larger sizes. The memory test saw about sixty-four mebibytes of extra resident memory on the first unfused call, versus about one page when fused. In a separate timing test, the fused kernel took about thirteen microseconds, down from twenty-three.
 
 ## Eight lanes and a tail
 
-1. Eight inputs fill one AVX2 vector. The actual JIT object shows packed add, multiply, and square root instructions operating on Y M M registers.
-2. Add a ninth input and it takes the scalar cleanup path. The last output still matches the float32 reference bit for bit.
-3. With seventeen inputs, the same schedule runs two packed iterations and one scalar iteration. The packed body increments the index by eight.
+1. How can a CPU work on eight numbers at once? Forge emits a vector loop. In this capture, the instructions read eight thirty-two-bit floats into one wide register, then add, multiply, and take their square roots together.
+2. Now add one more input. The first eight still go through the vector loop. Watch the last box: the ninth value goes through the one-at-a-time cleanup path, and its answer is three.
+3. With seventeen inputs, there are two groups of eight and one leftover. The loop handles both groups before the final scalar step. Forge checks the result against its reference, including that last value.
 
 ## Where Forge wins and loses
 
-1. An ordered float32 sum loses the one when it adds it to two to the twenty-fourth power. Forge preserves that order and returns four.
-2. The matrix kernel tiles rows, columns, and the reduction dimension. This seventeen by thirty-three by thirty-five case needs an edge tile on all three axes.
-3. The fused pointwise chain can beat NumPy. For the five hundred and twelve square matrix multiply, NumPy wins against Forge even with one BLAS thread.
-4. Repeating a cache-enabled request with the same shape produces a hit. Changing the length from four to nine produces a fresh cache miss.
+1. A compiler has to keep the math predictable. Add one to sixteen million seven hundred seventy-seven thousand two hundred sixteen in thirty-two-bit floating point, and it rounds away. That’s why this ordered sum returns four.
+2. Matrix multiply has a different problem: reusing data. Forge works on blocks instead of walking the full matrices in one sweep. This example crosses the tile boundaries, so the kernel has to finish with smaller blocks along the edges.
+3. The benchmarks show where each approach pays off. Forge wins on this short chain because it combines three operations into one pass. For the larger matrix, NumPy’s tuned math library is faster, even with a single thread.
+4. There’s also a cost to generating machine code in the first place. Repeat the same shape and Forge reuses that compiled code. Change the length, and the cache records a miss because the kernel needs to be compiled for the new shape.
