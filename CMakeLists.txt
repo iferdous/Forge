@@ -33,12 +33,15 @@ set_target_properties(forge_graph PROPERTIES POSITION_INDEPENDENT_CODE ON)
 forge_target_defaults(forge_graph)
 
 if(FORGE_ENABLE_JIT)
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET LLVM AND LLVM_DYLIB_COMPONENTS STREQUAL "all")
-        # The SDK's shared library avoids passing non-PIC system archives to Python's module link.
-        set(llvm_libraries LLVM)
-    else()
-        llvm_map_components_to_libnames(llvm_libraries Core OrcJIT Passes native X86)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET zstd::libzstd_shared)
+        # The SDK exports static zstd, but Ubuntu's archive cannot link into a
+        # Python extension. Use the shared library's same public zstd ABI.
+        get_target_property(llvm_support_dependencies LLVMSupport INTERFACE_LINK_LIBRARIES)
+        string(REPLACE "zstd::libzstd_static" "zstd::libzstd_shared"
+            llvm_support_dependencies "${llvm_support_dependencies}")
+        set_property(TARGET LLVMSupport PROPERTY INTERFACE_LINK_LIBRARIES "${llvm_support_dependencies}")
     endif()
+    llvm_map_components_to_libnames(llvm_libraries Core OrcJIT Passes native X86)
     separate_arguments(llvm_definitions NATIVE_COMMAND "${LLVM_DEFINITIONS}")
     add_library(forge_llvm INTERFACE)
     target_include_directories(forge_llvm SYSTEM INTERFACE ${LLVM_INCLUDE_DIRS})
