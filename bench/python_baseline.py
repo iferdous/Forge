@@ -14,6 +14,8 @@ import forge
 
 SIZES = (9, 1024, 65536, 1048576)
 TWO = np.float32(2)
+THREE = np.float32(3)
+WORKLOADS = ("x + 2", "sqrt((x + 2) * 3)")
 
 
 def elapsed(call, iterations):
@@ -47,6 +49,27 @@ def measure(calls, repetitions, random_order):
     }
 
 
+def numpy_cases(expression, x):
+    output = np.empty_like(x)
+    if expression == WORKLOADS[0]:
+        return {
+            "numpy/allocating": lambda: np.add(x, TWO),
+            "numpy/preallocated": lambda: np.add(x, TWO, out=output),
+        }
+
+    add_result, multiply_result = np.empty_like(x), np.empty_like(x)
+
+    def preallocated():
+        np.add(x, TWO, out=add_result)
+        np.multiply(add_result, THREE, out=multiply_result)
+        np.sqrt(multiply_result, out=output)
+
+    return {
+        "numpy/allocating": lambda: np.sqrt((x + TWO) * THREE),
+        "numpy/preallocated": preallocated,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
@@ -56,34 +79,38 @@ def main():
         parser.error("--repetitions must be positive")
 
     modes = ("scalar", "avx2") if forge.has_avx2() else ("scalar",)
-    program = forge.compile("x + 2", inputs=("x",))
     results = []
     random_order = random.Random(20261122)
     targets = {}
-    for size in SIZES:
-        x = (np.arange(size, dtype=np.float32) % np.float32(81))
-        numpy_out = np.empty_like(x)
-        expected = np.add(x, TWO, dtype=np.float32)
-        cases = {
-            "numpy/allocating": lambda: np.add(x, TWO, dtype=np.float32),
-            "numpy/preallocated": lambda: np.add(x, TWO, dtype=np.float32, out=numpy_out),
-        }
-        for mode in modes:
-            kernel = program.jit(x, target=mode)
-            forge_out = np.empty_like(x)
-            targets[mode] = {key: getattr(kernel.info, key) for key in ("triple", "cpu", "features")}
-            np.testing.assert_array_equal(kernel(x).view(np.uint32), expected.view(np.uint32))
-            kernel.run_into(forge_out, x)
-            np.testing.assert_array_equal(forge_out.view(np.uint32), expected.view(np.uint32))
-            cases[f"forge_{mode}/allocating"] = lambda kernel=kernel: kernel(x)
-            cases[f"forge_{mode}/preallocated"] = (
-                lambda kernel=kernel, output=forge_out: kernel.run_into(output, x)
-            )
-        results.append({"elements": size, "measurements": measure(cases, options.repetitions, random_order)})
-
+    for expression in WORKLOADS:
+        program = forge.compile(expression, inputs=("x",))
+        for size in SIZES:
+            x = np.arange(size, dtype=np.float32) % np.float32(81)
+            cases = numpy_cases(expression, x)
+            expected = cases["numpy/allocating"]()
+            for mode in modes:
+                for fusion in (False, True):
+                    label = "fused" if fusion else "unfused"
+                    kernel = program.jit(x, target=mode, fusion=fusion)
+                    forge_out = np.empty_like(x)
+                    targets[mode] = {
+                        key: getattr(kernel.info, key) for key in ("triple", "cpu", "features")
+                    }
+                    np.testing.assert_array_equal(kernel(x).view(np.uint32), expected.view(np.uint32))
+                    kernel.run_into(forge_out, x)
+                    np.testing.assert_array_equal(forge_out.view(np.uint32), expected.view(np.uint32))
+                    prefix = f"forge_{mode}_{label}"
+                    cases[f"{prefix}/allocating"] = lambda kernel=kernel: kernel(x)
+                    cases[f"{prefix}/preallocated"] = (
+                        lambda kernel=kernel, output=forge_out: kernel.run_into(output, x)
+                    )
+            results.append({
+                "expression": expression,
+                "elements": size,
+                "measurements": measure(cases, options.repetitions, random_order),
+            })
     options.out.parent.mkdir(parents=True, exist_ok=True)
     options.out.write_text(json.dumps({
-        "expression": "x + 2",
         "dtype": "float32",
         "platform": platform.platform(),
         "python": platform.python_version(),

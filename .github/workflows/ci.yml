@@ -70,7 +70,7 @@ jobs:
       - name: Run the graph, Python reference, and JIT tests
         run: ctest --preset release --verbose
 
-      - name: Inspect native objects and record warm baseline samples
+      - name: Verify fusion and record matched warm timings
         shell: pwsh
         run: |
           $PSNativeCommandUseErrorActionPreference = $true
@@ -80,7 +80,7 @@ jobs:
           $objdump = (Resolve-Path (Join-Path $sdk "bin/llvm-objdump$suffix")).Path
           $benchmark = (Resolve-Path ".local/build/release/bench/forge_native_bench$suffix").Path
           $env:PYTHONPATH = (Resolve-Path .local/build/release/python).Path
-          $out = '.local/evidence/stage-04'
+          $out = '.local/evidence/stage-05'
           New-Item -ItemType Directory -Force $out | Out-Null
           $cpu = if ($IsWindows) {
             (Get-CimInstance Win32_Processor | Select-Object -First 1).Name.Trim()
@@ -94,10 +94,10 @@ jobs:
           & $benchmark --benchmark_min_time=0.02s --benchmark_min_warmup_time=0.01 --benchmark_repetitions=5 --benchmark_enable_random_interleaving=true "--benchmark_out=$out/native.json" --benchmark_out_format=json
           python bench/python_baseline.py --out "$out/python.json"
 
-      - name: Upload the Stage 04 evidence
+      - name: Upload the Stage 05 evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: stage-04-${{ matrix.platform }}
-          path: .local/evidence/stage-04/
+          name: stage-05-${{ matrix.platform }}
+          path: .local/evidence/stage-05/
           include-hidden-files: true
