@@ -117,7 +117,7 @@ def benchmark(frames, preset, out, warm, full, include_numexpr, require_avx2, ob
         if objdump:
             kernel = engines[name].compiled_kernel(linear[0].reshape(-1))
             object_file = out / f"{name}.o"
-            object_file.write_bytes(kernel.object())
+            object_file.write_bytes(kernel.object)
             with (out / f"{name}.asm").open("w", encoding="utf-8") as assembly:
                 subprocess.run([objdump.resolve(), "-d", object_file.name], cwd=out,
                                stdout=assembly, check=True)

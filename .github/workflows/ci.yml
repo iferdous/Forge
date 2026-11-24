@@ -77,6 +77,24 @@ jobs:
           $env:PYTHONDONTWRITEBYTECODE = '1'
           python -m unittest discover -s examples/camera_preview -p 'test_*.py' -v
 
+      - name: Measure recorded camera frames on native AVX2
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install --only-binary=:all: numexpr==2.14.2
+          llvm_dir=$(cat .local/llvm-dir-linux-x64.txt)
+          PYTHONPATH="$PWD/.local/build/release/python" PYTHONDONTWRITEBYTECODE=1 \
+            NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+            python -m examples.camera_preview.benchmark --numexpr --require-avx2 \
+              --objdump "$llvm_dir/../../../bin/llvm-objdump" --out .local/evidence/camera-preview
+
+      - name: Upload camera preview evidence
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: camera-preview-linux-x64
+          path: .local/evidence/camera-preview/
+          include-hidden-files: true
+
       - name: Reproduce the full benchmark grid
         shell: pwsh
         run: |
@@ -108,24 +126,6 @@ jobs:
           python -m pip install --only-binary=:all: imageio-ffmpeg==0.6.0
           PYTHONPATH="$PWD/.local/build/release/python" PYTHONDONTWRITEBYTECODE=1 \
             python release/record_demo.py .local/evidence/stage-08 --out .local/evidence/stage-08
-
-      - name: Measure recorded camera frames on native AVX2
-        if: runner.os == 'Linux'
-        run: |
-          python -m pip install --only-binary=:all: numexpr==2.14.2
-          llvm_dir=$(cat .local/llvm-dir-linux-x64.txt)
-          PYTHONPATH="$PWD/.local/build/release/python" PYTHONDONTWRITEBYTECODE=1 \
-            NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-            python -m examples.camera_preview.benchmark --numexpr --require-avx2 \
-              --objdump "$llvm_dir/../../../bin/llvm-objdump" --out .local/evidence/camera-preview
-
-      - name: Upload camera preview evidence
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: camera-preview-linux-x64
-          path: .local/evidence/camera-preview/
-          include-hidden-files: true
 
       - name: Upload release evidence
         if: always()
