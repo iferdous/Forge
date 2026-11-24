@@ -1,0 +1,58 @@
+# Forge Camera Preview
+
+A camera test can produce a folder of frames that are hard to review in the shadows. This example applies a single exposure and tone preset to a folder and writes brighter PNG previews and a run report. The bundled set contains 16 different frames from a recorded TUM RGB-D camera sequence. [Source and attribution](../examples/camera_preview/data/README.md)
+
+## Run the bundled example
+
+From the repository root, use the Python environment and LLVM-enabled Forge module from the [Forge build instructions](../README.md#try-it).
+
+~~~sh
+.local/venv/bin/python -m pip install -r examples/camera_preview/requirements.txt
+PYTHONPATH="$PWD/.local/build/release/python" .local/venv/bin/python \
+  -m examples.camera_preview --out .local/camera-preview/demo --explain
+~~~
+
+On Apple Silicon, use the existing Forge build's Python directory. The Forge target defaults to the best native target available. Check the batch's actual target, frame count, compiler timings, per-frame clipping counts, and loop plans in `report.json`.
+
+~~~sh
+PYTHONPATH="$PWD/.local/build/macos-llvm/python" .local/venv/bin/python \
+  -m examples.camera_preview --out .local/camera-preview/mac-demo --explain
+~~~
+
+### Use your own frames
+
+Pass a single PNG/JPEG or a folder of such files. Names are processed in sorted order. Each output ends in `.preview.png`, and the source files remain available for comparison. Use a new output folder each time.
+
+~~~sh
+PYTHONPATH="$PWD/.local/build/release/python" .local/venv/bin/python \
+  -m examples.camera_preview ./recorded-frames \
+  --out .local/camera-preview/my-previews --stops 0.6 --lift 0.025 --explain
+~~~
+
+The same command accepts `--backend unfused` or `--backend numpy` for comparisons. Higher `--stops` puts more highlights at the output ceiling. `--lift` lifts dark values and changes the preview tone curve. The defaults are 0.35 stops and a lift of 0.015. The application reads ordinary 8-bit grayscale and RGB stills. Pillow applies EXIF orientation and converts supported embedded ICC profiles to sRGB. Frames without a declared color profile are treated as sRGB. Transparency, animated PNGs, higher bit depths, and unsupported color metadata produce an error. A failed batch leaves no published preview folder.
+
+## Follow one frame
+
+1. **Read and linearize.** Pillow decodes the image. A 256-entry lookup maps the 8-bit sRGB channel values to linear float32. For these 8-bit inputs, the lookup evaluates the same sRGB transfer function as a per-pixel formula. [Pillow formats](https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html) · [sRGB transfer function](https://www.w3.org/TR/css-color-4/#color-conversion-code)
+2. **Run the pixel kernel.** Flatten the contiguous image into a view. Forge sees the expression `sqrt((x * gain + lift) * scale)`, where `gain = 2**stops` and `scale = 1 / (1 + lift)`. This is a preview tone curve. The compiled handle is reused for frames with the same number of channel values. Each batch keeps up to four compiled handles and reuses an output buffer when adjacent frame sizes match.
+3. **Export.** Count channel values above the output ceiling, clip to the display range, re-encode to sRGB, and write 8-bit PNGs. The report preserves the timing boundaries and the exact formula. [PNG sRGB metadata](https://www.w3.org/TR/png-3/#11sRGB)
+
+The source photos and output previews depict the same recorded frames. Fused and unfused Forge follow the same float32 operation order. For a 640 × 480 RGB frame, the unfused plan materializes three arrays of 921,600 float32 channel values. The fused plan performs all four arithmetic operations in one pass. This eliminates about 10.55 MiB of Forge scratch for that shape. The figure comes from the kernel workspace plan. Pillow and sRGB conversion have their own allocations.
+
+## Reproduce the timing
+
+Use native Linux x64 with AVX2 for measurements of Forge's native vector target. The tool also supports scalar measurements on the M3. The command verifies float32 bits and encoded output hashes before reporting comparative timings.
+
+~~~sh
+.local/venv/bin/python -m pip install -r examples/camera_preview/requirements.txt numexpr==2.14.2
+llvm_dir=$(cat .local/llvm-dir-linux-x64.txt)
+PYTHONPATH="$PWD/.local/build/release/python" \
+  OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
+  .local/venv/bin/python -m examples.camera_preview.benchmark \
+  --numexpr --require-avx2 --objdump "$llvm_dir/../../../bin/llvm-objdump" \
+  --out .local/camera-preview/benchmark
+~~~
+
+The warm boundary processes the same 16 already decoded frames with reusable output buffers and compiled handles. The file-to-file boundary creates a new engine, reads the input files through the host filesystem, does the image and pixel transformations, and writes PNGs and the report. Each repetition rotates backend order. Timed file I/O uses the OS file cache. Cleanup and output-hash verification occur after the timed call. NumPy applies its four operations into one preallocated output. NumExpr uses one thread and moderate optimization with float32 constants. [NumExpr API](https://numexpr.readthedocs.io/en/latest/user_guide.html)
+
+The benchmark output includes every timed sample, input hashes, the full file-to-file stage timings, and the fused and unfused plans. When given llvm-objdump, it also includes disassembly of the kernels that executed the frame math.
