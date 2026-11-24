@@ -1,0 +1,559 @@
+{
+  "source_commit": "177a966163bb8631f29c2f9f6e65a12e362ed717",
+  "github_run_id": null,
+  "host": {
+    "system": "Darwin",
+    "architecture": "arm64",
+    "cpu": "Apple M3"
+  },
+  "versions": {
+    "python": "3.13.7",
+    "numpy": "2.5.5",
+    "pillow": "13.0.0",
+    "numexpr": "2.14.2"
+  },
+  "target": "scalar",
+  "preset": {
+    "stops": 0.35,
+    "lift": 0.015
+  },
+  "frame_count": 16,
+  "frame_shapes": [
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ]
+  ],
+  "inputs": [
+    {
+      "file": "1305031452.791720.png",
+      "sha256": "5dbdd530cd1165fc5cdd875613f87666c67df84645a585dd1745cb18e5982533"
+    },
+    {
+      "file": "1305031454.159672.png",
+      "sha256": "673900f42c3206a25cee85806f0741b78171c1e2196d9c17d681ce090f0af29b"
+    },
+    {
+      "file": "1305031455.527610.png",
+      "sha256": "afc3144a0ed3c003815f28632c4de0845401acdb12aae326017516effebd8453"
+    },
+    {
+      "file": "1305031456.859634.png",
+      "sha256": "ed6bf744f187f4af9ecb78a9441c5a4679d5f121d2a351c8b9c139aac6a77bac"
+    },
+    {
+      "file": "1305031458.227611.png",
+      "sha256": "119e813c815ed89bfbf4d059972cce875e336a6a6a013a59d99a682b6cad2281"
+    },
+    {
+      "file": "1305031459.591695.png",
+      "sha256": "69bd3a15f6aea38711c3dd7addc4e6f9ca7f863515ff19a22c9d51e573eecd39"
+    },
+    {
+      "file": "1305031460.959649.png",
+      "sha256": "6fd659c2367cce866da1dadeb6d9a64aa29b9f78a76bc03f3ac81fc0ca084090"
+    },
+    {
+      "file": "1305031462.327540.png",
+      "sha256": "ac7afc05ba1c65764399e16903f071b523812ac2f5dcee9102a00630b2f615e9"
+    },
+    {
+      "file": "1305031463.659766.png",
+      "sha256": "3de44c0ce617294a17f4d315179355b71d721e61edc0759818e106de666abf08"
+    },
+    {
+      "file": "1305031465.027823.png",
+      "sha256": "a283cefbae6335786a6144756091d4e21175974be3d8cfd4e33406c09c76a942"
+    },
+    {
+      "file": "1305031466.395784.png",
+      "sha256": "d9174134dc1d700095e901464c36f1c77e0359b49a1efaa32a0ca74bcd158f64"
+    },
+    {
+      "file": "1305031467.759907.png",
+      "sha256": "1c034d19ccca3608ac475f48c6d8b19f74e21dba0b416a5a1f57971a196cf39d"
+    },
+    {
+      "file": "1305031469.127679.png",
+      "sha256": "c66b5590ac542ac41eecfa6d33ec7ae4bf36b987d9798b08be50c8406b20e7c6"
+    },
+    {
+      "file": "1305031470.459721.png",
+      "sha256": "cc19847c22e3ff5b7f98a4fa1857220bfa1270cbf0e9a5b5e9490cd721ba661f"
+    },
+    {
+      "file": "1305031471.827639.png",
+      "sha256": "334ea58cd998fafff86f8478aed5b39be167658aca612390386b24f78be9c462"
+    },
+    {
+      "file": "1305031473.196069.png",
+      "sha256": "e9faedb3341fc9de2bd9ec1ab70cf84dbe493cde13e603bdc76e03b88671f1ce"
+    }
+  ],
+  "outputs": [
+    "e20831f1542d1b05ae4e8bec0d748b9501024a6a9a558c3023e210366c561d1c",
+    "adf57716bff46b9caee1a729325ee3e9b9ddac71d4233ed12c6b1e28b66a951a",
+    "34abf8415dd6e526d3d0e3e21f321224dff8bfbef208f3b6fb005d62c4de7373",
+    "2487f79365aa72f9580f91be037920381e43fa4477d3dd14379d0d033fe5112f",
+    "fd2587803e6983d3fad614ba9ad6080e3c314ab75d5581e0327ebb3912f215f0",
+    "b198fb4c32a5254f407214f7cec353a018146b220ffee6e1bf37bfd11ee0ed52",
+    "4480176dd29607870939162086114caa206596d860c3da5cf5699363f132a1d4",
+    "69b9858e77c9216e3d939e5e443930282eff91693fb4c4ddcb0224f69ef49848",
+    "236d92bffa32e87216e6510c01eb377b881f266774f38d3a4c93c04b4ab7de01",
+    "0da7d8256fa92f50592443b615c98e353b9d6f6798b110821f01288a6265cef2",
+    "300f26bf9b72cb2d9fa60a51d151e426679686fe63e6026db71a662ad0e4447d",
+    "5fab886c1cd911e7aad9ba711c5507c866c928f223912741c711c7c0ed58daf1",
+    "d1e280b8ee5105baf153697a54ffff0431ef1f0b6a50360494121b371a3e3035",
+    "18a388bafc9c94008a2d33c771f4338e3d28de883e3fc0359e34e255a1a42926",
+    "11ae80c168dc4f2c3f551f21d01b87e9876ef453b488b29a3e701dcd693c272d",
+    "41c8f96279fb460de7e8e480f0651c5fc882d290dad05324e80fa1c63655435c"
+  ],
+  "verification": "all backends match NumPy float32 bits and produce identical PNG files",
+  "backends": {
+    "numpy": {
+      "warm_batch_ns": [
+        5889291,
+        5617750,
+        5790167,
+        5796583,
+        5879500,
+        6093208,
+        6142666,
+        6226875,
+        5873500,
+        6227209,
+        6956333,
+        6776125,
+        5377208,
+        5257500,
+        5257292,
+        5880250,
+        5180875,
+        5121875,
+        5125625,
+        5450208,
+        5746250
+      ],
+      "file_to_file_ns": [
+        268875083,
+        261609167,
+        260140041,
+        330172250,
+        777666958,
+        708510500,
+        385356541,
+        367792625,
+        625139875
+      ],
+      "file_stages_ns": [
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 85503832,
+          "pixel_ns": 6126750,
+          "encode_and_write_ns": 176370126
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 83104457,
+          "pixel_ns": 5990375,
+          "encode_and_write_ns": 171837246
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 82774333,
+          "pixel_ns": 5679583,
+          "encode_and_write_ns": 171040667
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 104797957,
+          "pixel_ns": 8136459,
+          "encode_and_write_ns": 216367501
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 232194748,
+          "pixel_ns": 22821919,
+          "encode_and_write_ns": 520435499
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 219210164,
+          "pixel_ns": 17863207,
+          "encode_and_write_ns": 469623208
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 122328749,
+          "pixel_ns": 9755459,
+          "encode_and_write_ns": 251946084
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 116729294,
+          "pixel_ns": 9085375,
+          "encode_and_write_ns": 240890291
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 208166457,
+          "pixel_ns": 15623831,
+          "encode_and_write_ns": 399673666
+        }
+      ]
+    },
+    "unfused": {
+      "warm_batch_ns": [
+        20865292,
+        20644459,
+        21198459,
+        21079042,
+        21293542,
+        21399375,
+        21368375,
+        21467791,
+        21394833,
+        24054041,
+        21167125,
+        21317959,
+        20916916,
+        20073709,
+        20124042,
+        20077000,
+        20005959,
+        20008417,
+        20340375,
+        20398917,
+        20610166
+      ],
+      "file_to_file_ns": [
+        290373084,
+        318264792,
+        311651375,
+        479527041,
+        834640125,
+        726589458,
+        410480291,
+        470726375,
+        578880875
+      ],
+      "file_stages_ns": [
+        {
+          "compile_ns": 6716708,
+          "decode_and_linearize_ns": 85233583,
+          "pixel_ns": 21876915,
+          "encode_and_write_ns": 175586081
+        },
+        {
+          "compile_ns": 6996167,
+          "decode_and_linearize_ns": 92409210,
+          "pixel_ns": 21515837,
+          "encode_and_write_ns": 196251625
+        },
+        {
+          "compile_ns": 7830459,
+          "decode_and_linearize_ns": 91750499,
+          "pixel_ns": 23161376,
+          "encode_and_write_ns": 187991291
+        },
+        {
+          "compile_ns": 11004292,
+          "decode_and_linearize_ns": 141637500,
+          "pixel_ns": 34874586,
+          "encode_and_write_ns": 290645835
+        },
+        {
+          "compile_ns": 19520792,
+          "decode_and_linearize_ns": 237395957,
+          "pixel_ns": 59209582,
+          "encode_and_write_ns": 516310625
+        },
+        {
+          "compile_ns": 17193875,
+          "decode_and_linearize_ns": 212860167,
+          "pixel_ns": 52523457,
+          "encode_and_write_ns": 441733290
+        },
+        {
+          "compile_ns": 11476208,
+          "decode_and_linearize_ns": 120628792,
+          "pixel_ns": 30368249,
+          "encode_and_write_ns": 246582081
+        },
+        {
+          "compile_ns": 11596125,
+          "decode_and_linearize_ns": 137796125,
+          "pixel_ns": 34774999,
+          "encode_and_write_ns": 285147376
+        },
+        {
+          "compile_ns": 17170041,
+          "decode_and_linearize_ns": 171430956,
+          "pixel_ns": 41639082,
+          "encode_and_write_ns": 347078375
+        }
+      ]
+    },
+    "forge": {
+      "warm_batch_ns": [
+        8134125,
+        8312917,
+        8027334,
+        8464542,
+        8217834,
+        8194167,
+        8299750,
+        8258708,
+        8181417,
+        9203167,
+        8636584,
+        8298916,
+        8387083,
+        8021166,
+        7996709,
+        8049958,
+        7952208,
+        7946625,
+        7960625,
+        8268875,
+        8241583
+      ],
+      "file_to_file_ns": [
+        270528917,
+        286031416,
+        274081917,
+        606950958,
+        620725417,
+        916560125,
+        536353292,
+        519473083,
+        482916542
+      ],
+      "file_stages_ns": [
+        {
+          "compile_ns": 8599833,
+          "decode_and_linearize_ns": 82896999,
+          "pixel_ns": 8047084,
+          "encode_and_write_ns": 170146791
+        },
+        {
+          "compile_ns": 9792625,
+          "decode_and_linearize_ns": 90438708,
+          "pixel_ns": 8423918,
+          "encode_and_write_ns": 176229038
+        },
+        {
+          "compile_ns": 10476126,
+          "decode_and_linearize_ns": 84897332,
+          "pixel_ns": 8161543,
+          "encode_and_write_ns": 169766375
+        },
+        {
+          "compile_ns": 19604667,
+          "decode_and_linearize_ns": 185927545,
+          "pixel_ns": 18005584,
+          "encode_and_write_ns": 381712666
+        },
+        {
+          "compile_ns": 23364834,
+          "decode_and_linearize_ns": 193968875,
+          "pixel_ns": 18291124,
+          "encode_and_write_ns": 382815835
+        },
+        {
+          "compile_ns": 26668667,
+          "decode_and_linearize_ns": 256383543,
+          "pixel_ns": 20739750,
+          "encode_and_write_ns": 609641709
+        },
+        {
+          "compile_ns": 23236291,
+          "decode_and_linearize_ns": 164178085,
+          "pixel_ns": 15796250,
+          "encode_and_write_ns": 331584916
+        },
+        {
+          "compile_ns": 16701625,
+          "decode_and_linearize_ns": 160162790,
+          "pixel_ns": 15285917,
+          "encode_and_write_ns": 325091459
+        },
+        {
+          "compile_ns": 16446750,
+          "decode_and_linearize_ns": 148018458,
+          "pixel_ns": 14578207,
+          "encode_and_write_ns": 302321500
+        }
+      ]
+    },
+    "numexpr": {
+      "warm_batch_ns": [
+        22812084,
+        22913791,
+        23140250,
+        23327583,
+        23379834,
+        23353125,
+        23640709,
+        23356209,
+        23605458,
+        24022667,
+        23809875,
+        23701250,
+        23124292,
+        22246625,
+        22200875,
+        22717917,
+        22176667,
+        22237166,
+        22260000,
+        22159125,
+        22679583
+      ],
+      "file_to_file_ns": [
+        284115459,
+        282042542,
+        265450500,
+        320137667,
+        812898875,
+        877785375,
+        472814209,
+        384782416,
+        479036792
+      ],
+      "file_stages_ns": [
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 85665458,
+          "pixel_ns": 23057209,
+          "encode_and_write_ns": 174585249
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 85566917,
+          "pixel_ns": 22976708,
+          "encode_and_write_ns": 172628249
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 79683373,
+          "pixel_ns": 22033958,
+          "encode_and_write_ns": 163160000
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 96293335,
+          "pixel_ns": 26305542,
+          "encode_and_write_ns": 196799458
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 188775041,
+          "pixel_ns": 50915791,
+          "encode_and_write_ns": 571696789
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 225763832,
+          "pixel_ns": 64357002,
+          "encode_and_write_ns": 582212083
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 142763335,
+          "pixel_ns": 39371249,
+          "encode_and_write_ns": 289588083
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 114890958,
+          "pixel_ns": 31389960,
+          "encode_and_write_ns": 237491876
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 143710999,
+          "pixel_ns": 39368291,
+          "encode_and_write_ns": 294696711
+        }
+      ]
+    }
+  },
+  "numexpr_threads": 1
+}

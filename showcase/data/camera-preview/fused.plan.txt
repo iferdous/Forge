@@ -1,0 +1,6 @@
+loops=1 temporary_arrays=0
+loop %10 -> output
+  %3 = multiply(%0, %2)
+  %6 = add(%3, %5)
+  %9 = multiply(%6, %8)
+  %10 = sqrt(%9)

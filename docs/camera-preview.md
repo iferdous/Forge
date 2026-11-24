@@ -39,6 +39,8 @@ The same command accepts `--backend unfused` or `--backend numpy` for comparison
 
 The source photos and output previews depict the same recorded frames. Fused and unfused Forge follow the same float32 operation order. For a 640 × 480 RGB frame, the unfused plan materializes three arrays of 921,600 float32 channel values. The fused plan performs all four arithmetic operations in one pass. This eliminates about 10.55 MiB of Forge scratch for that shape. The figure comes from the kernel workspace plan. Pillow and sRGB conversion have their own allocations.
 
+The README compares `1305031467.759907.png` with `1305031467.759907.png.preview.png`, generated with the default preset.
+
 ## Reproduce the timing
 
 Use native Linux x64 with AVX2 for measurements of Forge's native vector target. The tool also supports scalar measurements on the M3. The command verifies float32 bits and encoded output hashes before reporting comparative timings.
@@ -56,3 +58,41 @@ PYTHONPATH="$PWD/.local/build/release/python" \
 The warm boundary processes the same 16 already decoded frames with reusable output buffers and compiled handles. The file-to-file boundary creates a new engine, reads the input files through the host filesystem, does the image and pixel transformations, and writes PNGs and the report. Each repetition rotates backend order. Timed file I/O uses the OS file cache. Cleanup and output-hash verification occur after the timed call. NumPy applies its four operations into one preallocated output. NumExpr uses one thread and moderate optimization with float32 constants. [NumExpr API](https://numexpr.readthedocs.io/en/latest/user_guide.html)
 
 The benchmark output includes every timed sample, input hashes, the full file-to-file stage timings, and the fused and unfused plans. When given llvm-objdump, it also includes disassembly of the kernels that executed the frame math.
+
+On Apple Silicon, point `PYTHONPATH` at the `macos-llvm` build and omit `--require-avx2`. Use `--objdump /usr/bin/objdump` to collect the native ARM64 scalar instructions.
+
+### Native AVX2 measurement
+
+The shared Ubuntu runner reported an Intel Xeon 6975P-C. Each backend ran on the same 16 recorded frames, with 21 warm and 9 file-to-file samples. These are medians in milliseconds per batch. The four backends matched NumPy's float32 bits and each produced the same PNG files. [Raw samples and hashes](../showcase/data/camera-preview/avx2.json) · [GitHub Actions run](https://github.com/iferdous/Forge/actions/runs/45511313327)
+
+| Backend | Warm pixel math | Complete file-to-file job |
+| --- | ---: | ---: |
+| Forge fused AVX2 | **4.78 ms** | 530.07 ms |
+| Forge unfused AVX2 | 16.45 ms | 553.77 ms |
+| NumPy, preallocated | 11.41 ms | 532.64 ms |
+| NumExpr, one thread | 31.24 ms | 550.23 ms |
+
+Fusion made the warm AVX2 pixel batch **3.44× faster** than the unfused kernel and **2.39× faster** than preallocated NumPy on this run. In a complete fused job the median JIT time was 6.13 ms. The median stage for converting back to sRGB, clipping, encoding, and writing the PNGs was 384.53 ms. File-to-file performance against NumPy was roughly even on this run.
+
+The executed kernel disassembles to the following AVX2 instructions in the fused loop. Each `ymm` register holds eight float32 channel values. [Fused plan](../showcase/data/camera-preview/fused.plan.txt) · [Fused assembly](../showcase/data/camera-preview/forge-avx2.asm) · [Unfused plan](../showcase/data/camera-preview/unfused.plan.txt) · [Unfused assembly](../showcase/data/camera-preview/unfused-avx2.asm)
+
+```asm
+vmulps  (%rdx,%rcx,4), %ymm3, %ymm6
+vaddps  %ymm6, %ymm4, %ymm6
+vmulps  %ymm6, %ymm5, %ymm6
+vsqrtps %ymm6, %ymm6
+```
+
+### Apple M3 measurements
+
+Each of two local runs used 21 warm and 9 complete batch samples per backend. The warm fused Forge batch took 8.21–8.22 ms, the unfused batch took 20.68–20.92 ms, and NumPy took 5.55–5.80 ms. The file-to-file order changed between runs. Encoding and writing was the largest timed stage for fused Forge in both, at roughly 324–325 ms per batch. [First run](../showcase/data/camera-preview/m3-run-1.json) · [Second run](../showcase/data/camera-preview/m3-run-2.json)
+
+### Rebuild the README figures
+
+Use the capture directory from the bundled-frame benchmark. The renderer checks the source and preview hashes before composing the before-and-after image.
+
+~~~sh
+.local/venv/bin/python -m pip install matplotlib==3.10.8
+MPLCONFIGDIR="$PWD/.local/camera-preview/matplotlib" .local/venv/bin/python \
+  showcase/camera_figures.py .local/camera-preview/benchmark --out .local/camera-preview/figures
+~~~

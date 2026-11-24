@@ -1,0 +1,559 @@
+{
+  "source_commit": "acb682e00dee906af613a5c76a31e65899a278b5",
+  "github_run_id": "45511313327",
+  "host": {
+    "system": "Linux",
+    "architecture": "x86_64",
+    "cpu": "Intel(R) Xeon(R) 6975P-C"
+  },
+  "versions": {
+    "python": "3.13.18",
+    "numpy": "2.5.5",
+    "pillow": "13.0.0",
+    "numexpr": "2.14.2"
+  },
+  "target": "avx2",
+  "preset": {
+    "stops": 0.35,
+    "lift": 0.015
+  },
+  "frame_count": 16,
+  "frame_shapes": [
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ],
+    [
+      480,
+      640,
+      3
+    ]
+  ],
+  "inputs": [
+    {
+      "file": "1305031452.791720.png",
+      "sha256": "5dbdd530cd1165fc5cdd875613f87666c67df84645a585dd1745cb18e5982533"
+    },
+    {
+      "file": "1305031454.159672.png",
+      "sha256": "673900f42c3206a25cee85806f0741b78171c1e2196d9c17d681ce090f0af29b"
+    },
+    {
+      "file": "1305031455.527610.png",
+      "sha256": "afc3144a0ed3c003815f28632c4de0845401acdb12aae326017516effebd8453"
+    },
+    {
+      "file": "1305031456.859634.png",
+      "sha256": "ed6bf744f187f4af9ecb78a9441c5a4679d5f121d2a351c8b9c139aac6a77bac"
+    },
+    {
+      "file": "1305031458.227611.png",
+      "sha256": "119e813c815ed89bfbf4d059972cce875e336a6a6a013a59d99a682b6cad2281"
+    },
+    {
+      "file": "1305031459.591695.png",
+      "sha256": "69bd3a15f6aea38711c3dd7addc4e6f9ca7f863515ff19a22c9d51e573eecd39"
+    },
+    {
+      "file": "1305031460.959649.png",
+      "sha256": "6fd659c2367cce866da1dadeb6d9a64aa29b9f78a76bc03f3ac81fc0ca084090"
+    },
+    {
+      "file": "1305031462.327540.png",
+      "sha256": "ac7afc05ba1c65764399e16903f071b523812ac2f5dcee9102a00630b2f615e9"
+    },
+    {
+      "file": "1305031463.659766.png",
+      "sha256": "3de44c0ce617294a17f4d315179355b71d721e61edc0759818e106de666abf08"
+    },
+    {
+      "file": "1305031465.027823.png",
+      "sha256": "a283cefbae6335786a6144756091d4e21175974be3d8cfd4e33406c09c76a942"
+    },
+    {
+      "file": "1305031466.395784.png",
+      "sha256": "d9174134dc1d700095e901464c36f1c77e0359b49a1efaa32a0ca74bcd158f64"
+    },
+    {
+      "file": "1305031467.759907.png",
+      "sha256": "1c034d19ccca3608ac475f48c6d8b19f74e21dba0b416a5a1f57971a196cf39d"
+    },
+    {
+      "file": "1305031469.127679.png",
+      "sha256": "c66b5590ac542ac41eecfa6d33ec7ae4bf36b987d9798b08be50c8406b20e7c6"
+    },
+    {
+      "file": "1305031470.459721.png",
+      "sha256": "cc19847c22e3ff5b7f98a4fa1857220bfa1270cbf0e9a5b5e9490cd721ba661f"
+    },
+    {
+      "file": "1305031471.827639.png",
+      "sha256": "334ea58cd998fafff86f8478aed5b39be167658aca612390386b24f78be9c462"
+    },
+    {
+      "file": "1305031473.196069.png",
+      "sha256": "e9faedb3341fc9de2bd9ec1ab70cf84dbe493cde13e603bdc76e03b88671f1ce"
+    }
+  ],
+  "outputs": [
+    "b595c96a9da8187cf4736f6f44962e09c355871f98ef9cad4c53bd48110871e4",
+    "98e6a2170f67db81bfc40f2e0dd7e2c246222dd6c8dbe4330747fce30e9628b6",
+    "a071586a612e775f6fab51cb33d5992b62a943cb192da6205dbd8ffef4794072",
+    "7e4c447909ab1e3139c8186ac87411f661d71857ddde86bda226bd9b945a5bea",
+    "23790f55c21005d231d997bee2a4c56978ca85371f985399ae652d9b2d9145f5",
+    "37590b5bda740844813eeea91331841cb6a0c55a2adb5f80409c9c626960045e",
+    "b48ebc0b5f22db502d9340d046687c38bff8daf76da3b21a98054c6aef84483b",
+    "e53ceefd0d2435f3557535dd08f5069c4b0747e68c662b27bece6e357a4ad117",
+    "70d9a65b18007b8c1fcca2ee8071f3315bbd5394f1251281b41f3581e09ed98b",
+    "45528b917b448267543c8351fa8c4c6f1c918f1d3a1a098bd7324d47ebc50f7c",
+    "39a5a98de1b26dedca58944d8b0c003e73d5d785e3ba0119736a6e5166bbe47e",
+    "ae5e7200dba6de89c2de4a77f9eab94c1537bb3454fd5e1d5f4fc4fd362c1c90",
+    "ab96f8c21a998d074564bf7943e7eceedb173bf9c6ea75b6423ee83792a1158a",
+    "6bdc6902123d936cc992453190e14cdf6d6b82be03780ac3d2026cb0e0995fd9",
+    "2a08f3d4130bce8edb1412e85899f79ff8b50e4c588a1d07bf3a214996cba869",
+    "d7ff63372758b2d1c81b100bf01c17c5ea72ac255e7389c5982cc33ba9edb849"
+  ],
+  "verification": "all backends match NumPy float32 bits and produce identical PNG files",
+  "backends": {
+    "numpy": {
+      "warm_batch_ns": [
+        12033501,
+        11529995,
+        11243039,
+        11322104,
+        11136895,
+        11972699,
+        11413090,
+        11435043,
+        11200202,
+        11311571,
+        11041602,
+        11165143,
+        11069190,
+        11304220,
+        11353062,
+        11976690,
+        11411722,
+        11705859,
+        11601221,
+        12051756,
+        11502540
+      ],
+      "file_to_file_ns": [
+        593358449,
+        533117950,
+        530010738,
+        532861881,
+        531389889,
+        543175051,
+        532644531,
+        532608727,
+        531152640
+      ],
+      "file_stages_ns": [
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 143275617,
+          "pixel_ns": 12696223,
+          "encode_and_write_ns": 435743012
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 134037847,
+          "pixel_ns": 12620277,
+          "encode_and_write_ns": 384405082
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 133229722,
+          "pixel_ns": 12189641,
+          "encode_and_write_ns": 382616241
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 133242613,
+          "pixel_ns": 12388872,
+          "encode_and_write_ns": 385173929
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 132643277,
+          "pixel_ns": 12293719,
+          "encode_and_write_ns": 384475765
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 135487740,
+          "pixel_ns": 12972903,
+          "encode_and_write_ns": 392500931
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 133194982,
+          "pixel_ns": 12364588,
+          "encode_and_write_ns": 385117362
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 133002926,
+          "pixel_ns": 12234025,
+          "encode_and_write_ns": 385400291
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 132323223,
+          "pixel_ns": 12112406,
+          "encode_and_write_ns": 384702398
+        }
+      ]
+    },
+    "unfused": {
+      "warm_batch_ns": [
+        17000315,
+        16639438,
+        16606851,
+        16445325,
+        16054132,
+        16420691,
+        16721479,
+        16612941,
+        16010073,
+        16305071,
+        16394497,
+        16284345,
+        15955917,
+        16320953,
+        16721399,
+        17135539,
+        16343144,
+        16589792,
+        17025300,
+        17172094,
+        16387888
+      ],
+      "file_to_file_ns": [
+        626421181,
+        557137056,
+        555549804,
+        553773342,
+        549876886,
+        553393033,
+        553460839,
+        551937189,
+        558287484
+      ],
+      "file_stages_ns": [
+        {
+          "compile_ns": 11239940,
+          "decode_and_linearize_ns": 144905293,
+          "pixel_ns": 23733732,
+          "encode_and_write_ns": 444562994
+        },
+        {
+          "compile_ns": 11375462,
+          "decode_and_linearize_ns": 133879690,
+          "pixel_ns": 22263428,
+          "encode_and_write_ns": 387107347
+        },
+        {
+          "compile_ns": 11310061,
+          "decode_and_linearize_ns": 133028795,
+          "pixel_ns": 21113680,
+          "encode_and_write_ns": 387121650
+        },
+        {
+          "compile_ns": 11130019,
+          "decode_and_linearize_ns": 133216678,
+          "pixel_ns": 21738033,
+          "encode_and_write_ns": 385196402
+        },
+        {
+          "compile_ns": 11181510,
+          "decode_and_linearize_ns": 132181199,
+          "pixel_ns": 20998577,
+          "encode_and_write_ns": 383018606
+        },
+        {
+          "compile_ns": 11073973,
+          "decode_and_linearize_ns": 132236429,
+          "pixel_ns": 21145955,
+          "encode_and_write_ns": 386500136
+        },
+        {
+          "compile_ns": 11235814,
+          "decode_and_linearize_ns": 132804846,
+          "pixel_ns": 21340057,
+          "encode_and_write_ns": 385558041
+        },
+        {
+          "compile_ns": 11217649,
+          "decode_and_linearize_ns": 133031242,
+          "pixel_ns": 21640454,
+          "encode_and_write_ns": 383529042
+        },
+        {
+          "compile_ns": 11245512,
+          "decode_and_linearize_ns": 133258897,
+          "pixel_ns": 22059637,
+          "encode_and_write_ns": 389204869
+        }
+      ]
+    },
+    "forge": {
+      "warm_batch_ns": [
+        4952556,
+        4941814,
+        5202737,
+        4882751,
+        4659722,
+        4672677,
+        4707088,
+        4782527,
+        4662033,
+        4836859,
+        4663880,
+        4806869,
+        4663411,
+        4783983,
+        4731719,
+        4989151,
+        4999233,
+        4766581,
+        4847518,
+        4968372,
+        4780463
+      ],
+      "file_to_file_ns": [
+        530073800,
+        533083935,
+        534086414,
+        525741257,
+        524416649,
+        524788796,
+        541226158,
+        532222275,
+        528899266
+      ],
+      "file_stages_ns": [
+        {
+          "compile_ns": 6242216,
+          "decode_and_linearize_ns": 131898611,
+          "pixel_ns": 4873685,
+          "encode_and_write_ns": 384527262
+        },
+        {
+          "compile_ns": 6163927,
+          "decode_and_linearize_ns": 132165504,
+          "pixel_ns": 4777909,
+          "encode_and_write_ns": 387425949
+        },
+        {
+          "compile_ns": 6205408,
+          "decode_and_linearize_ns": 133835120,
+          "pixel_ns": 5536466,
+          "encode_and_write_ns": 385976234
+        },
+        {
+          "compile_ns": 5823742,
+          "decode_and_linearize_ns": 130350924,
+          "pixel_ns": 4448258,
+          "encode_and_write_ns": 382754978
+        },
+        {
+          "compile_ns": 5871558,
+          "decode_and_linearize_ns": 130094772,
+          "pixel_ns": 4387382,
+          "encode_and_write_ns": 381591379
+        },
+        {
+          "compile_ns": 5863070,
+          "decode_and_linearize_ns": 130187644,
+          "pixel_ns": 4411195,
+          "encode_and_write_ns": 381831046
+        },
+        {
+          "compile_ns": 7998243,
+          "decode_and_linearize_ns": 135046706,
+          "pixel_ns": 5805622,
+          "encode_and_write_ns": 389835991
+        },
+        {
+          "compile_ns": 6124979,
+          "decode_and_linearize_ns": 130617489,
+          "pixel_ns": 4419141,
+          "encode_and_write_ns": 388561570
+        },
+        {
+          "compile_ns": 6006927,
+          "decode_and_linearize_ns": 131453468,
+          "pixel_ns": 4651483,
+          "encode_and_write_ns": 384236626
+        }
+      ]
+    },
+    "numexpr": {
+      "warm_batch_ns": [
+        31629998,
+        31392681,
+        31066667,
+        31326553,
+        30838498,
+        31238979,
+        31474263,
+        31409862,
+        30794249,
+        30968762,
+        30282444,
+        30644003,
+        30655328,
+        31105895,
+        31158283,
+        32019488,
+        31155331,
+        31712047,
+        31759117,
+        31947433,
+        31649882
+      ],
+      "file_to_file_ns": [
+        550229750,
+        549607718,
+        551601868,
+        547493741,
+        548838031,
+        551922792,
+        549077868,
+        550740411,
+        550577921
+      ],
+      "file_stages_ns": [
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 133583141,
+          "pixel_ns": 30632024,
+          "encode_and_write_ns": 383887560
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 133455527,
+          "pixel_ns": 30303171,
+          "encode_and_write_ns": 383850840
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 134180210,
+          "pixel_ns": 30487393,
+          "encode_and_write_ns": 384604972
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 131188991,
+          "pixel_ns": 29058413,
+          "encode_and_write_ns": 385217100
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 132640468,
+          "pixel_ns": 29895224,
+          "encode_and_write_ns": 384408573
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 133422735,
+          "pixel_ns": 30178005,
+          "encode_and_write_ns": 386266983
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 132750680,
+          "pixel_ns": 29962452,
+          "encode_and_write_ns": 384271042
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 131902368,
+          "pixel_ns": 29455081,
+          "encode_and_write_ns": 387289006
+        },
+        {
+          "compile_ns": 0,
+          "decode_and_linearize_ns": 133371944,
+          "pixel_ns": 29781214,
+          "encode_and_write_ns": 385438908
+        }
+      ]
+    }
+  },
+  "numexpr_threads": 1
+}
