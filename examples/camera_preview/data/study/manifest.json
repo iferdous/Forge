@@ -1,0 +1,216 @@
+[
+  {
+    "scene": "Office walkthrough",
+    "sequence": "freiburg1_room",
+    "folder": "study/room",
+    "archive_url": "https://cvg.cit.tum.de/rgbd/dataset/freiburg1/rgbd_dataset_freiburg1_room.tgz",
+    "archive_sha256": "5ace47a1d2e53696bc939a84999293a04a7226958e848a609666691fd3cc38da",
+    "source_rgb_frames": 1362,
+    "selection": "16 evenly spaced indices in timestamp order, including both endpoints",
+    "frames": [
+      {
+        "file": "1305031910.765238.png",
+        "index": 0,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031910.765238.png",
+        "sha256": "94afe78f6c0efac7e2f268392a8014c7f5da3b763524eb098cd44265dded94c2"
+      },
+      {
+        "file": "1305031913.797106.png",
+        "index": 91,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031913.797106.png",
+        "sha256": "b25900422fc165b673a416aad1abc3c4ab6d4c3b0beba70973ac822edf60a712"
+      },
+      {
+        "file": "1305031916.801088.png",
+        "index": 181,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031916.801088.png",
+        "sha256": "9b4c1de23c73d21bdc0f76f5fd25d4d4c325bc2523c78a3756ee9ac2774f2fee"
+      },
+      {
+        "file": "1305031919.833072.png",
+        "index": 272,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031919.833072.png",
+        "sha256": "ed4e1a5d960510213a55233cc023cd80e6d4c0aca665c461735e37a0d5ba5e30"
+      },
+      {
+        "file": "1305031922.865045.png",
+        "index": 363,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031922.865045.png",
+        "sha256": "f5edaf6f5eabba1788250ed5714579cba1e2f87e7285f8a5dff691db765f749b"
+      },
+      {
+        "file": "1305031925.901176.png",
+        "index": 454,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031925.901176.png",
+        "sha256": "5c0e08968f4efeb2e63328dce007cc3ee3d2d276b81717eefff0a52b8d7cc3b3"
+      },
+      {
+        "file": "1305031928.901197.png",
+        "index": 544,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031928.901197.png",
+        "sha256": "953b0a95d0d9371824a1b7cf6b40a22768d2b60ef8c4b0310f648cf0c5e52c8a"
+      },
+      {
+        "file": "1305031931.932907.png",
+        "index": 635,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031931.932907.png",
+        "sha256": "c40865718177bdbeca9b1001e4c94ff4fcb365642d994ecc6c6319d8eaa10661"
+      },
+      {
+        "file": "1305031934.969077.png",
+        "index": 726,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031934.969077.png",
+        "sha256": "a592a1aa534fc006043994ea8b7fb5e6110520ae4529633d98598f852512bc63"
+      },
+      {
+        "file": "1305031938.000822.png",
+        "index": 817,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031938.000822.png",
+        "sha256": "ea99c6057e8e70a5d987c063d3307f03c5ae904772e14feccf439663a071d75e"
+      },
+      {
+        "file": "1305031941.003160.png",
+        "index": 907,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031941.003160.png",
+        "sha256": "e0d98622325ca5a052df8799dcc4d495e40a532b58aa01d662352e9bede67a18"
+      },
+      {
+        "file": "1305031944.040486.png",
+        "index": 998,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031944.040486.png",
+        "sha256": "cf9dec89f023f83e0980fd651815b36c38137cf92974caeeec9cccb02b87c814"
+      },
+      {
+        "file": "1305031947.068973.png",
+        "index": 1089,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031947.068973.png",
+        "sha256": "3033dbeb7ccd6fd8484ed0c4d6335dfea2038554eee18e8168b7d7b124397792"
+      },
+      {
+        "file": "1305031950.104966.png",
+        "index": 1180,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031950.104966.png",
+        "sha256": "eb24459a6eeb1b4205c9e91c59fe90cf70a9f65d41361cf2f1008615fc250a1c"
+      },
+      {
+        "file": "1305031953.104909.png",
+        "index": 1270,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031953.104909.png",
+        "sha256": "7e7491da4454267e52615e1d2dced412acb473ee6c052d138521d5286da94415"
+      },
+      {
+        "file": "1305031956.136924.png",
+        "index": 1361,
+        "archive_path": "rgbd_dataset_freiburg1_room/rgb/1305031956.136924.png",
+        "sha256": "89af3c6d22f962fe3c7e45249fb8e475c0f3f4abf5a9623867d3e00e1c07b950"
+      }
+    ]
+  },
+  {
+    "scene": "Robot-mounted camera",
+    "sequence": "freiburg2_pioneer_360",
+    "folder": "study/pioneer",
+    "archive_url": "https://cvg.cit.tum.de/rgbd/dataset/freiburg2/rgbd_dataset_freiburg2_pioneer_360.tgz",
+    "archive_sha256": "35bd9d764e29a52a90c166ae93fe648a1c540f636c5f690d87aca5f884e2c8ce",
+    "source_rgb_frames": 1225,
+    "selection": "16 evenly spaced indices in timestamp order, including both endpoints",
+    "frames": [
+      {
+        "file": "1311876800.398168.png",
+        "index": 0,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876800.398168.png",
+        "sha256": "6f9cc7000ebc6237624c254ad0c565703267647b131ca1c596bd4426c0d94392"
+      },
+      {
+        "file": "1311876804.123566.png",
+        "index": 82,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876804.123566.png",
+        "sha256": "cb787a0e3568af4f495febed8601a27fa81eea91cb1d84a003276995636ca383"
+      },
+      {
+        "file": "1311876808.925049.png",
+        "index": 163,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876808.925049.png",
+        "sha256": "de5beb1ae678fe14a7b80cfeddb1bc69f2ba5c8d890ad78b225b74a6b222f2ae"
+      },
+      {
+        "file": "1311876813.766032.png",
+        "index": 245,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876813.766032.png",
+        "sha256": "a0c5abda86a194a5b1c0dabc4e6b1a34aaaae6cf7681444fe410e110cf0331b0"
+      },
+      {
+        "file": "1311876819.235577.png",
+        "index": 326,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876819.235577.png",
+        "sha256": "1ddd8214b22a3cf28e508e989d93ab55445f905d088d32be452e4e97debebec4"
+      },
+      {
+        "file": "1311876824.109974.png",
+        "index": 408,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876824.109974.png",
+        "sha256": "9e6dfe56d3c95a6494701a54ade6738a9be09446e37d5208af1efe3a9e69962e"
+      },
+      {
+        "file": "1311876828.915327.png",
+        "index": 490,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876828.915327.png",
+        "sha256": "7bc97efecd43aa8371bd9739a8915055618fcaffe99a8690dcfdbaa5d8f9c3c8"
+      },
+      {
+        "file": "1311876833.415691.png",
+        "index": 571,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876833.415691.png",
+        "sha256": "9cb236bb9b79d538f686fb8fb90b82d69c4424c66d992c23b7ee116cf2e1ad64"
+      },
+      {
+        "file": "1311876838.058848.png",
+        "index": 653,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876838.058848.png",
+        "sha256": "fb4ceac1835e1cfa543fa243130441994dba2fbe88900e9838a3c57065a7aab3"
+      },
+      {
+        "file": "1311876842.859715.png",
+        "index": 734,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876842.859715.png",
+        "sha256": "4253832f116b0f4777530c3a922585e90b67742dc14b0f3e730d976e5b5339a1"
+      },
+      {
+        "file": "1311876847.536993.png",
+        "index": 816,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876847.536993.png",
+        "sha256": "bc91d7a7770210522e38faf49a900db6eb454aef90f1d1913f2e327a960d8074"
+      },
+      {
+        "file": "1311876853.474458.png",
+        "index": 898,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876853.474458.png",
+        "sha256": "bbc6f5c50e39c181d2c24e5e189109470f4f130164c0e30dc6e9449859eaf3ab"
+      },
+      {
+        "file": "1311876858.350389.png",
+        "index": 979,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876858.350389.png",
+        "sha256": "f82f7ac87c6951feb896fc8dafcbce6e31981bc1e649338c9d12a6da30de6a9d"
+      },
+      {
+        "file": "1311876863.187463.png",
+        "index": 1061,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876863.187463.png",
+        "sha256": "611d6f3d285714e179006e99d431a85c889772817bff6b383d0609fe51197adf"
+      },
+      {
+        "file": "1311876867.988252.png",
+        "index": 1142,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876867.988252.png",
+        "sha256": "42d9a85acbe7c190e9f4dcd3cd94fa205d799d25fa532e751c5f3854bffbc9ac"
+      },
+      {
+        "file": "1311876872.492280.png",
+        "index": 1224,
+        "archive_path": "rgbd_dataset_freiburg2_pioneer_360/rgb/1311876872.492280.png",
+        "sha256": "f1b1ef6d4f9b3f379d2fc3d349b0febe3392ac13dc51e0e6738c391c3ef4265c"
+      }
+    ]
+  }
+]
