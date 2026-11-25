@@ -39,7 +39,22 @@ The same command accepts `--backend unfused` or `--backend numpy` for comparison
 
 The source photos and output previews depict the same recorded frames. Fused and unfused Forge follow the same float32 operation order. For a 640 × 480 RGB frame, the unfused plan materializes three arrays of 921,600 float32 channel values. The fused plan performs all four arithmetic operations in one pass. This eliminates about 10.55 MiB of Forge scratch for that shape. The figure comes from the kernel workspace plan. Pillow and sRGB conversion have their own allocations.
 
-The README compares `1305031467.759907.png` with `1305031467.759907.png.preview.png`, generated with the default preset.
+The README gallery uses the default preset for all six frame pairs. The worked floor pixel is column 30, row 420 in `1305031467.759907.png`, counting from zero in the full 640 × 480 source. The image pipeline measured the exact source and exported RGB bytes there. The intermediate column values were recomputed in float32 and checked against the exported bytes. [Pixel data](../showcase/data/camera-preview/pixel-example.json)
+
+## Reproduce the image study
+
+The gallery and findings cover 48 images. Each of three TUM RGB-D recordings contributes 16 evenly spaced RGB frames, including its first and last. The featured pairs are selected for readable scene details. The graph uses every sampled frame. The desk benchmark below uses its original 16-frame workload. [Recordings, manifests, and license](../examples/camera_preview/data/README.md)
+
+For each source and exported PNG, the study decodes RGB to linear light and calculates relative luminance at each pixel with `Y = 0.2126 R + 0.7152 G + 0.0722 B`. It reports the median of those pixel values as a percentage of reference white. The separate clipping series divides the app's count of intermediate RGB channel values above 1.0 by the total number of channel values. Clipping measures how often the preview hits the display limit, including channels already at white in the source. The measurements describe the tone preset on these recordings. A reference exposure or a task-specific quality metric would be needed to assess image enhancement quality. [sRGB and luminance calculation](https://www.w3.org/TR/css-color-4/#color-conversion-code)
+
+~~~sh
+.local/venv/bin/python -m pip install -r examples/camera_preview/requirements.txt matplotlib==3.10.8
+PYTHONPATH="$PWD/.local/build/macos-llvm/python" \
+  MPLCONFIGDIR="$PWD/.local/camera-preview/matplotlib" \
+  .local/venv/bin/python -m showcase.camera_study --out .local/camera-preview/study
+~~~
+
+On Linux, use `.local/build/release/python` for `PYTHONPATH`. The study verifies the source hashes, runs Forge on all selected frames, and saves the full preview PNGs and `report.json` in `forge-previews/`. It also writes the gallery, graph, measured pixel, and per-frame CSV. Use a new output directory for each run. [Published per-frame data](../showcase/data/camera-preview/camera-study.csv)
 
 ## Reproduce the timing
 
@@ -87,7 +102,7 @@ vsqrtps %ymm6, %ymm6
 
 Each of two local runs used 21 warm and 9 complete batch samples per backend. The warm fused Forge batch took 8.21–8.22 ms, the unfused batch took 20.68–20.92 ms, and NumPy took 5.55–5.80 ms. The file-to-file order changed between runs. Encoding and writing was the largest timed stage for fused Forge in both, at roughly 324–325 ms per batch. [First run](../showcase/data/camera-preview/m3-run-1.json) · [Second run](../showcase/data/camera-preview/m3-run-2.json)
 
-### Rebuild the README figures
+### Rebuild the benchmark figures
 
 Use the capture directory from the bundled-frame benchmark. The renderer checks the source and preview hashes before composing the before-and-after image.
 
