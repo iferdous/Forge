@@ -1,12 +1,67 @@
 # Forge
 
-Forge is a C++20 and LLVM JIT compiler for float32 array expressions written in Python. Its **operator fusion** pass combines eligible operations into a single CPU loop and removes the intermediate arrays those operations would otherwise write and reread.
+Forge turns **Python array formulas into native CPU code**. Give it a formula and float32 NumPy arrays, and its C++20/LLVM compiler builds a callable kernel specialized to those array shapes. Its operator fusion pass combines eligible operations into one loop, so the CPU can carry intermediate values from one operation to the next before writing the result.
 
-[Camera preview](#camera-preview) · [Performance at a glance](#performance-at-a-glance) · [Video walkthroughs](#video-walkthroughs) · [Complete benchmark tables](#complete-benchmark-tables) · [Compiler traces](#compiler-traces) · [Try it](#try-it)
+[Compile an expression](#compile-an-expression) · [Performance](#performance-at-a-glance) · [Motion features](#accelerometer-motion-features) · [Camera preview](#camera-preview) · [Benchmark tables](#complete-benchmark-tables) · [Compiler traces](#compiler-traces) · [Try it](#try-it)
+
+## Compile an expression
+
+```python
+import forge
+import numpy as np
+
+x = np.array([1, 10, 25, 46], dtype=np.float32)
+program = forge.compile("sqrt((x + 2) * 3)", inputs=("x",))
+target = "avx2" if forge.has_avx2() else "scalar"
+kernel = program.jit(x, target=target)
+print(kernel(x))  # [ 3.  6.  9. 12.]
+```
+
+The expression gives the math. Forge builds a typed operation graph, schedules loops, lowers them to LLVM IR, and runs the machine code in the Python process. Here fusion turns **three array passes and two temporary arrays into one pass and zero temporary arrays**. The same compiled kernel can run on new values of the same input shape. [See the generated IR and machine code](#compiler-traces)
+
+| Workload | Inputs and result | What Forge compiles |
+| --- | --- | --- |
+| [Motion features](#accelerometer-motion-features) | Three acceleration arrays → one motion feature per window | A pointwise vector magnitude followed by a mean reduction |
+| [Camera preview](#camera-preview) | An array of linear-light RGB samples → an array of adjusted samples | A pointwise exposure and tone curve |
+| [Dense matrix products](docs/plan/06-reductions-and-matmul.md) | Two float32 matrices → their product | Tiled rank-two matrix multiplication |
+
+## Performance at a glance
+
+<!-- BEGIN GENERATED HEADLINES -->
+
+| Measured workload | Ubuntu x64 | Windows x64 |
+| --- | --- | --- |
+| 1,024-element add → multiply → square root, allocating Python call against NumPy | **Forge 2.88× faster** | **Forge 3.33× faster** |
+| 65,536-element same chain, native AVX2 unfused → fused | **2.06×** · 29.28 → 14.25 µs | **1.91×** · 21.74 → 11.39 µs |
+| 65,536-element same chain, native fused scalar → AVX2 | **4.02×** | **7.96×** |
+| 512 × 512 matrix multiply, allocating Python call | **NumPy 6.56× faster** | **NumPy 4.79× faster** |
+
+These warm medians come from shared x64 CI at 4a1620b. The native rows compare matched preallocated calls. [Source run](https://github.com/iferdous/Forge/actions/runs/45268500878)
+
+<!-- END GENERATED HEADLINES -->
+
+![Warm native AVX2 timings for the fused and unfused three-op chain at every tested size on Ubuntu and Windows](showcase/assets/fusion-latency.png)
+
+The three-op chain goes from **three loops and two temporary arrays to one loop and zero temporary arrays**. Both plans produce identical float32 output for the checked inputs. The Python timings include output allocation, and the warm comparisons exclude compilation. [Where NumPy leads](docs/results.md#crossover-and-numpy-wins)
+
+## Accelerometer motion features
+
+A robotics engineer can summarize each short accelerometer window to find sections of a test run worth inspecting. The example reads three recorded axes, subtracts each axis's average within the window, and passes three 128-element float32 arrays to Forge. For each timestamp, `sqrt((ax * ax + ay * ay) + az * az)` is the distance of that reading from the window's average acceleration vector. `mean(...)` turns the 128 distances into one measure of acceleration variation.
+
+![Three centered accelerometer traces and their Forge magnitude in a recorded office window, next to 36 measured mean magnitudes from the three recordings.](showcase/assets/motion-features.png)
+
+| Plan for `mean(sqrt((ax * ax + ay * ay) + az * az))` | Unfused | Fused |
+| --- | ---: | ---: |
+| Loops | 7 | **2** |
+| Temporary arrays | 6 | **1** |
+
+Forge combines the three squares, two adds, and square root into one loop. It materializes the magnitude array for the ordered float32 mean in the second loop. All **36 recorded windows** match an independent NumPy calculation bit for bit. [Run it and inspect the plans](docs/motion-features.md) · [Recorded inputs and license](examples/motion_features/data/README.md)
 
 ## Camera preview
 
-After a camera test, give Forge a folder of PNGs or JPEGs to generate brighter review images with one preset. The image study covers **48 real frames** from three TUM RGB-D recordings: desk close-ups, an office walkthrough, and a camera mounted on a turning Pioneer robot. The gallery shows six pairs using the same default preset, **+0.35 exposure stops** and **0.015 shadow lift**. [Frame selection and license](examples/camera_preview/data/README.md)
+The camera example uses Forge as the pixel-math backend of a batch preview tool. Pillow reads PNGs or JPEGs. Python converts their RGB channels to linear light and packs each frame into one float32 array. Forge receives that array and the formula. It returns another array for the app to encode as a review image.
+
+The image study covers **48 real frames** from the same three TUM RGB-D recordings used for the accelerometer example. The gallery shows six pairs using **+0.35 exposure stops** and **0.015 shadow lift**. [Frame selection and license](examples/camera_preview/data/README.md)
 
 ![Recorded frames and Forge previews for a desk, an office walkthrough, and a robot-mounted camera. Each pair shows the change in median luminance and the share of RGB channels clipped.](showcase/assets/camera-study-gallery.jpg)
 
@@ -19,7 +74,7 @@ After a camera test, give Forge a folder of PNGs or JPEGs to generate brighter r
 
 ### How the equation changes a pixel
 
-A color image is a grid of pixels with three numbers per pixel, one for red, green, and blue. Each number is an sRGB byte from 0 to 255. Pillow reads the bytes, and the app maps them to **linear light** before doing the exposure math. Forge applies the same four operations to each channel independently.
+An RGB image stores three bytes per pixel. After decoding to linear light, the app's flat array puts red, green, and blue next to each other for every pixel. The red channel at `(column, row)` is `x[3 * (row * width + column)]`. Each array value independently goes through the same four Forge operations. The result at that index becomes the red channel of the same pixel in the preview.
 
 ```text
 linear preview = sqrt((linear sample × 2^stops + lift) × (1 / (1 + lift)))
@@ -36,6 +91,15 @@ Follow the marked floor pixel in the first pair. Its recorded RGB value was **(1
 | Exposure, lift, and scale | 0.18162 | Multiply by 1.27456, add 0.015, then multiply by 0.98522. |
 | Square root | 0.42617 | Apply the tone curve. |
 | Clamp, encode, and round | **175** | Store a new sRGB red byte. |
+
+<details>
+<summary>See the output for all 256 possible channel values</summary>
+
+![The recorded-to-preview mapping evaluated by Forge. The marked floor pixel goes from input 102 to output 175, and several bright input bytes reach the 255 ceiling.](showcase/assets/camera-tone-curve.png)
+
+The green line comes from running the actual kernel on each possible input byte and applying the app's sRGB export. Its flat section shows why different bright inputs can produce the same output byte.
+
+</details>
 
 ### What changed across 48 frames
 
@@ -78,25 +142,6 @@ PYTHONPATH="$PWD/.local/build/macos-llvm/python" .local/venv/bin/python \
 Pass a source file or folder after `examples.camera_preview` to use your own images. Read `report.json` in the output directory for the execution target, compiled loop plans, clipping counts, and per-stage timings. [Linux command and benchmark method](docs/camera-preview.md)
 
 </details>
-
-## Performance at a glance
-
-<!-- BEGIN GENERATED HEADLINES -->
-
-| Measured workload | Ubuntu x64 | Windows x64 |
-| --- | --- | --- |
-| 1,024-element add → multiply → square root, allocating Python call against NumPy | **Forge 2.88× faster** | **Forge 3.33× faster** |
-| 65,536-element same chain, native AVX2 unfused → fused | **2.06×** · 29.28 → 14.25 µs | **1.91×** · 21.74 → 11.39 µs |
-| 65,536-element same chain, native fused scalar → AVX2 | **4.02×** | **7.96×** |
-| 512 × 512 matrix multiply, allocating Python call | **NumPy 6.56× faster** | **NumPy 4.79× faster** |
-
-These warm medians come from shared x64 CI at 4a1620b. The native rows compare matched preallocated calls. [Source run](https://github.com/iferdous/Forge/actions/runs/45268500878)
-
-<!-- END GENERATED HEADLINES -->
-
-![Warm native AVX2 timings for the fused and unfused three-op chain at every tested size on Ubuntu and Windows](showcase/assets/fusion-latency.png)
-
-The three-op chain goes from **three loops and two temporary arrays to one loop and zero temporary arrays**. Both plans produce identical float32 output for the checked inputs. The Python timings include output allocation, and the warm comparisons exclude compilation. [Where NumPy leads](docs/results.md#crossover-and-numpy-wins)
 
 ## Video walkthroughs
 
@@ -4337,17 +4382,6 @@ With either LLVM build loaded, run the module without an expression for the inte
 ~~~sh
 .local/venv/bin/python -m forge
 .local/venv/bin/python -m forge 'sqrt((x + 2) * 3)' --inspect assembly
-~~~
-
-~~~python
-import forge
-import numpy as np
-
-x = np.array([1, 10, 25, 46], dtype=np.float32)
-program = forge.compile("sqrt((x + 2) * 3)", inputs=("x",))
-target = "avx2" if forge.has_avx2() else "scalar"
-kernel = program.jit(x, target=target, cache=True)
-print(kernel(x))  # [ 3.  6.  9. 12.]
 ~~~
 
 ## Architecture

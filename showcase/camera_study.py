@@ -10,7 +10,7 @@ import matplotlib
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from examples.camera_preview.pipeline import DECODE_SRGB, Preset, encode_srgb, load_frame, preview_batch
+from examples.camera_preview.pipeline import DECODE_SRGB, PixelEngine, Preset, encode_srgb, load_frame, preview_batch
 from showcase.camera_figures import BACKGROUND, FRAME, MUTED, ROOT, TEXT
 
 
@@ -163,6 +163,43 @@ def render_findings(groups, path):
     plt.close(fig)
 
 
+def render_tone_curve(preset, pixel, path):
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    inputs = np.arange(256, dtype=np.uint8)
+    engine = PixelEngine("forge", preset)
+    outputs = encode_srgb(engine.prepare(DECODE_SRGB[inputs])())
+    source, preview = pixel["source_rgb"][0], pixel["preview_rgb"][0]
+    if outputs[source] != preview:
+        raise ValueError("The tone curve disagrees with the exported red channel")
+
+    fig, axis = plt.subplots(figsize=(8.5, 4.4), dpi=120, facecolor=BACKGROUND)
+    fig.subplots_adjust(left=.13, bottom=.17, right=.94, top=.77)
+    fig.text(.055, .91, "What the preview formula does to a channel byte", color=TEXT,
+             fontsize=17, weight="bold", va="top")
+    axis.set_facecolor(BACKGROUND)
+    axis.plot(inputs, inputs, linestyle="--", lw=1.2, color=SOURCE_COLOR, label="Original byte")
+    axis.plot(inputs, outputs, lw=2.5, color=PREVIEW_COLOR, label="Forge preview byte")
+    axis.scatter(source, preview, color=PREVIEW_COLOR, s=44, zorder=3)
+    axis.annotate(f"Floor pixel: {source} → {preview}", (source, preview), xytext=(120, 108),
+                  color=TEXT, fontsize=10, arrowprops={"arrowstyle": "->", "color": MUTED})
+    first_white = int(np.flatnonzero(outputs == 255)[0])
+    axis.annotate(f"{first_white}–255 export as 255", (first_white, 255), xytext=(140, 220),
+                  color=TEXT, fontsize=10, bbox={"facecolor": BACKGROUND, "edgecolor": "none"},
+                  arrowprops={"arrowstyle": "->", "color": MUTED})
+    axis.set(xlim=(0, 255), ylim=(0, 266), xticks=[0, 64, 128, 192, 255], yticks=[0, 64, 128, 192, 255])
+    axis.set_xlabel("Recorded sRGB channel byte", color=MUTED, fontsize=10)
+    axis.set_ylabel("Exported sRGB channel byte", color=MUTED, fontsize=10)
+    axis.tick_params(colors=MUTED, labelsize=10, length=0, pad=8)
+    axis.grid(color="#34443c", linewidth=.65)
+    for spine in axis.spines.values():
+        spine.set_visible(False)
+    axis.legend(loc="upper left", frameon=False, labelcolor=TEXT, fontsize=9)
+    fig.savefig(path, facecolor=BACKGROUND)
+    plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True, type=Path, help="New directory for previews, data, and figures")
@@ -185,6 +222,7 @@ def main():
     render_gallery(recordings, groups, previews, FEATURED, args.out / "camera-study-gallery.jpg")
     render_gallery(recordings, groups, previews, EXTRA, args.out / "camera-study-more.jpg")
     render_findings(groups, args.out / "camera-study-findings.png")
+    render_tone_curve(preset, pixel, args.out / "camera-tone-curve.png")
     print(f"Measured {len(paths)} frames with {report['target']} Forge. Figures and data in {args.out}.")
 
 

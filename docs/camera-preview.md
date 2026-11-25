@@ -54,7 +54,7 @@ PYTHONPATH="$PWD/.local/build/macos-llvm/python" \
   .local/venv/bin/python -m showcase.camera_study --out .local/camera-preview/study
 ~~~
 
-On Linux, use `.local/build/release/python` for `PYTHONPATH`. The study verifies the source hashes, runs Forge on all selected frames, and saves the full preview PNGs and `report.json` in `forge-previews/`. It also writes the gallery, graph, measured pixel, and per-frame CSV. Use a new output directory for each run. [Published per-frame data](../showcase/data/camera-preview/camera-study.csv)
+On Linux, use `.local/build/release/python` for `PYTHONPATH`. The study verifies the source hashes, runs Forge on all selected frames, and saves the full preview PNGs and `report.json` in `forge-previews/`. It writes the gallery, graph, measured pixel, and per-frame CSV. It also runs all 256 byte values through the same linearization, compiled kernel, and export transform to generate the tone curve. Use a new output directory for each run. [Published per-frame data](../showcase/data/camera-preview/camera-study.csv)
 
 ## Reproduce the timing
 
