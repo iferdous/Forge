@@ -77,6 +77,13 @@ jobs:
           $env:PYTHONDONTWRITEBYTECODE = '1'
           python -m unittest discover -s examples/camera_preview -p 'test_*.py' -v
 
+      - name: Verify the recorded accelerometer example on AVX2
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = (Resolve-Path .local/build/release/python).Path
+          $env:PYTHONDONTWRITEBYTECODE = '1'
+          python -m examples.motion_features --target avx2 --explain
+
       - name: Measure recorded camera frames on native AVX2
         if: runner.os == 'Linux'
         run: |

@@ -1,0 +1,71 @@
+[
+  {
+    "id": "desk_closeups",
+    "source_archive_url": "https://cvg.cit.tum.de/rgbd/dataset/freiburg1/rgbd_dataset_freiburg1_desk.tgz",
+    "archive_sha256": "e983d6830916e66dc4a46a71368046b149b283de87769690e7aa4e0b9483530c",
+    "archive_member": "rgbd_dataset_freiburg1_desk/accelerometer.txt",
+    "source_sample_count": 11815,
+    "window_samples": 128,
+    "window_start_indices": [
+      0,
+      1024,
+      2176,
+      3200,
+      4224,
+      5248,
+      6400,
+      7424,
+      8448,
+      9472,
+      10624,
+      11648
+    ],
+    "subset_sha256": "32c2901a3fbaee2e576abfcad04c8af4c29b7ca7cd9ed63bc7865fc1838a039d"
+  },
+  {
+    "id": "office_walkthrough",
+    "source_archive_url": "https://cvg.cit.tum.de/rgbd/dataset/freiburg1/rgbd_dataset_freiburg1_room.tgz",
+    "archive_sha256": "5ace47a1d2e53696bc939a84999293a04a7226958e848a609666691fd3cc38da",
+    "archive_member": "rgbd_dataset_freiburg1_room/accelerometer.txt",
+    "source_sample_count": 24569,
+    "window_samples": 128,
+    "window_start_indices": [
+      0,
+      2176,
+      4480,
+      6656,
+      8832,
+      11008,
+      13312,
+      15488,
+      17664,
+      19840,
+      22144,
+      24320
+    ],
+    "subset_sha256": "8b1c64a760177f58c43bb90ab546a7b58a413e5277c92e92f65287a6fb653a47"
+  },
+  {
+    "id": "pioneer_turn",
+    "source_archive_url": "https://cvg.cit.tum.de/rgbd/dataset/freiburg2/rgbd_dataset_freiburg2_pioneer_360.tgz",
+    "archive_sha256": "35bd9d764e29a52a90c166ae93fe648a1c540f636c5f690d87aca5f884e2c8ce",
+    "archive_member": "rgbd_dataset_freiburg2_pioneer_360/accelerometer.txt",
+    "source_sample_count": 35825,
+    "window_samples": 128,
+    "window_start_indices": [
+      0,
+      3200,
+      6528,
+      9728,
+      12928,
+      16128,
+      19456,
+      22656,
+      25856,
+      29056,
+      32384,
+      35584
+    ],
+    "subset_sha256": "b390f9dddbd2ed8cd8772f6d1bb26eaa275e7e5192de4be9762bfe9f42204c61"
+  }
+]

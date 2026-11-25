@@ -1,0 +1,5 @@
+# Recorded accelerometer inputs
+
+These are samples of the `accelerometer.txt` members shipped with the Freiburg 1 desk, Freiburg 1 room, and Freiburg 2 Pioneer 360 recordings from the TUM RGB-D SLAM Dataset. Each file copies the original timestamps and axes. It contains 12 evenly spaced, non-overlapping windows from the list of complete 128-sample windows, including the first and last complete windows. The manifest records the source checksums, archive members, zero-based sample offsets, and subset checksums. [Manifest](manifest.json) · [TUM recordings](https://cvg.cit.tum.de/data/datasets/rgbd-dataset/download)
+
+Source authors are Jürgen Sturm, Nikolas Engelhard, Felix Endres, Wolfram Burgard, and Daniel Cremers, *A Benchmark for the Evaluation of RGB-D SLAM Systems* (IROS, 2012). The data, selected excerpts, and derived chart are provided under CC BY 4.0. [Dataset license](https://cvg.cit.tum.de/data/datasets/rgbd-dataset#license) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
